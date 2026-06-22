@@ -22,6 +22,16 @@ function addMember() {
   newName.value = ''; newHc.value = ''
 }
 
+const editingId = ref(null)
+const editName = ref(''); const editHc = ref('')
+function startEdit(m) { editingId.value = m.id; editName.value = m.name; editHc.value = m.handicap }
+function confirmEdit() {
+  if (!editName.value.trim()) return
+  store.updateMember(editingId.value, editName.value.trim(), editHc.value)
+  editingId.value = null
+}
+function cancelEdit() { editingId.value = null }
+
 // 모임
 const mtTitle = ref(''); const mtDate = ref(''); const mtTime = ref('15:00')
 function addMeeting() {
@@ -113,11 +123,22 @@ function saveScores() {
         </div>
         <div v-if="store.members.length === 0" class="empty">등록된 회원이 없어요.</div>
         <div v-for="m in store.members" :key="m.id" class="list-row">
-          <b>{{ m.name }}</b>
-          <span class="row-right">
-            <span class="dim">핸디 {{ m.handicap }}</span>
-            <button class="btn-ghost" @click="store.deleteMember(m.id)">삭제</button>
-          </span>
+          <template v-if="editingId === m.id">
+            <div class="edit-inline">
+              <input v-model="editName" placeholder="이름" style="flex:2" />
+              <input v-model="editHc" type="number" placeholder="핸디" style="flex:1;width:70px" />
+              <button class="btn-sm btn" @click="confirmEdit">저장</button>
+              <button class="btn-ghost" @click="cancelEdit">취소</button>
+            </div>
+          </template>
+          <template v-else>
+            <b>{{ m.name }}</b>
+            <span class="row-right">
+              <span class="dim">핸디 {{ m.handicap }}</span>
+              <button class="btn-ghost" @click="startEdit(m)">수정</button>
+              <button class="btn-ghost btn-del" @click="store.deleteMember(m.id)">삭제</button>
+            </span>
+          </template>
         </div>
       </div>
 
@@ -254,6 +275,9 @@ input, select {
 .list-row { display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-top: 1px solid #2c4a33; }
 .list-row b { color: #eaf2e6; }
 .row-right { display: flex; align-items: center; gap: 0.75rem; }
+.edit-inline { display: flex; gap: 0.5rem; align-items: center; width: 100%; }
+.edit-inline input { margin-top: 0; padding: 0.45rem 0.6rem; }
+.btn-del { color: #e8543e; border-color: #e8543e33; }
 
 .team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
 .team-box { background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; }

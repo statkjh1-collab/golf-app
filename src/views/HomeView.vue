@@ -9,7 +9,7 @@ const store = useGolfStore()
   <main class="home">
     <section class="hero">
       <div class="hero-icon">⛳</div>
-      <h1>스크린골프 정기모임</h1>
+      <h1>아지트 스크린골프 모임</h1>
       <p>월 2회 정기 라운드 · 핸디캡 적용 · 순위별 식대 정산</p>
       <div class="hero-actions">
         <RouterLink to="/schedule" class="btn-cta">일정 · 참석 신청</RouterLink>

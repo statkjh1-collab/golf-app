@@ -85,6 +85,18 @@ export const useGolfStore = defineStore('golf', () => {
     })
     const mt = meetings.value.find(m => m.id === meeting_id)
     if (mt) { mt.total_fee = total_fee; mt.status = 'done' }
+
+    // 참가 회원 핸디 자동 재계산 (전체 경기 평균 gross - 72, 최소 0)
+    const participantIds = [...new Set(entries.map(e => e.member_id))]
+    participantIds.forEach(memberId => {
+      const allGross = scores.value.filter(s => s.member_id === memberId).map(s => s.gross)
+      if (allGross.length === 0) return
+      const avg = allGross.reduce((a, b) => a + b, 0) / allGross.length
+      const newHc = Math.max(0, Math.round(avg - 72))
+      const m = members.value.find(m => m.id === memberId)
+      if (m) m.handicap = newHc
+    })
+
     persist()
   }
 

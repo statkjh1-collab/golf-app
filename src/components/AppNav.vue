@@ -1,6 +1,6 @@
 <template>
   <nav class="nav">
-    <RouterLink to="/" class="nav-brand">⛳ 스크린골프 모임</RouterLink>
+    <RouterLink to="/" class="nav-brand">⛳ 아지트 스크린골프 모임</RouterLink>
     <div class="nav-links">
       <RouterLink to="/schedule">일정·참석</RouterLink>
       <RouterLink to="/ranking">순위표</RouterLink>
