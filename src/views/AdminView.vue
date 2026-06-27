@@ -120,9 +120,15 @@ function doFeePreview() {
   const raw = n === 1 ? [1] : scores.map((_, i) => 5 + 10 * (i / (n - 1)))
   const sum = raw.reduce((a, b) => a + b, 0)
   const ratios = raw.map(r => r / sum)
+  const amounts = ratios.map(r => fee ? Math.round(fee * r / 100) * 100 : null)
+  // 반올림 차이를 꼴등(마지막 인덱스=최고 부담)에서 조정
+  if (fee && amounts.length) {
+    const total = amounts.reduce((a, b) => a + b, 0)
+    amounts[amounts.length - 1] -= (total - fee)
+  }
   feePreview.value = scores.map((s, i) => ({
     ...s, ratio: ratios[i],
-    fee_amount: fee ? Math.round(fee * ratios[i] / 100) * 100 : null,
+    fee_amount: amounts[i],
   }))
 }
 

@@ -143,6 +143,14 @@ export const useGolfStore = defineStore('golf', () => {
     await supabase.from('scores').delete().eq('meeting_id', meeting_id)
     scores.value = scores.value.filter(s => s.meeting_id !== meeting_id)
 
+    const amounts = withNet.map((_, i) =>
+      total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null
+    )
+    if (total_fee && amounts.length) {
+      const totalAmt = amounts.reduce((a, b) => a + b, 0)
+      amounts[amounts.length - 1] -= (totalAmt - total_fee)
+    }
+
     const toInsert = withNet.map((e, i) => ({
       meeting_id,
       member_id: e.member_id,
@@ -151,7 +159,7 @@ export const useGolfStore = defineStore('golf', () => {
       net: e.net,
       rank: i + 1,
       ratio: ratios[i] || 0,
-      fee_amount: total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null,
+      fee_amount: amounts[i],
     }))
     const { data: newScores } = await supabase.from('scores').insert(toInsert).select()
     if (newScores) scores.value.push(...newScores)
