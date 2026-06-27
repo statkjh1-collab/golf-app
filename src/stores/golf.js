@@ -7,16 +7,24 @@ export const useGolfStore = defineStore('golf', () => {
   const meetings = ref([])
   const attendances = ref([])
   const scores = ref([])
-  const accessLogs = ref(JSON.parse(localStorage.getItem('golf_access_logs') || '[]'))
+  const accessLogs = ref([])
   const loading = ref(false)
 
-  function logAccess(member_id) {
+  async function fetchAccessLogs() {
+    const { data } = await supabase.from('access_logs').select('*').order('created_at', { ascending: false }).limit(200)
+    accessLogs.value = data || []
+  }
+
+  async function logAccess(member_id) {
     const member = members.value.find(m => m.id === member_id)
     if (!member) return
-    const log = { name: member.name, time: new Date().toISOString() }
-    accessLogs.value.unshift(log)
-    if (accessLogs.value.length > 200) accessLogs.value = accessLogs.value.slice(0, 200)
-    localStorage.setItem('golf_access_logs', JSON.stringify(accessLogs.value))
+    const { data } = await supabase.from('access_logs').insert({ member_id, name: member.name }).select().single()
+    if (data) accessLogs.value.unshift(data)
+  }
+
+  async function clearAccessLogs() {
+    await supabase.from('access_logs').delete().neq('id', 0)
+    accessLogs.value = []
   }
 
   async function fetchAll() {
@@ -122,8 +130,9 @@ export const useGolfStore = defineStore('golf', () => {
 
   // 스코어
   async function saveScores(meeting_id, entries, total_fee) {
+    // 순위 기준: 기계 핸디 적용 스코어(net_input) + 멀리건
     const withNet = entries
-      .map(e => ({ ...e, net: e.gross + (e.mulligan ? 1 : 0) - (e.handicap || 0) }))
+      .map(e => ({ ...e, net: e.net_input + (e.mulligan ? 1 : 0) }))
       .sort((a, b) => a.net - b.net)
     const n = withNet.length
     const ratios = n <= 0 ? [] : n === 1 ? [1] : (() => {
@@ -138,9 +147,9 @@ export const useGolfStore = defineStore('golf', () => {
     const toInsert = withNet.map((e, i) => ({
       meeting_id,
       member_id: e.member_id,
-      gross: e.gross,
+      gross: e.gross,        // 타수 (핸디 재계산용, null 가능)
       mulligan: e.mulligan,
-      net: e.net,
+      net: e.net,            // 기계 핸디점수 + 멀리건
       rank: i + 1,
       ratio: ratios[i] || 0,
       fee_amount: total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null,
@@ -152,10 +161,10 @@ export const useGolfStore = defineStore('golf', () => {
     const mt = meetings.value.find(m => m.id === meeting_id)
     if (mt) { mt.total_fee = total_fee; mt.status = 'done' }
 
-    // 핸디 자동 재계산
-    const participantIds = [...new Set(entries.map(e => e.member_id))]
+    // 핸디 자동 재계산 (타수 입력된 경우에만)
+    const participantIds = [...new Set(entries.filter(e => e.gross != null).map(e => e.member_id))]
     await Promise.all(participantIds.map(async memberId => {
-      const allGross = scores.value.filter(s => s.member_id === memberId).map(s => s.gross)
+      const allGross = scores.value.filter(s => s.member_id === memberId && s.gross != null).map(s => s.gross)
       if (!allGross.length) return
       const newHc = Math.max(0, Math.round(allGross.reduce((a, b) => a + b, 0) / allGross.length - 72))
       await supabase.from('members').update({ handicap: newHc }).eq('id', memberId)
@@ -195,7 +204,7 @@ export const useGolfStore = defineStore('golf', () => {
   return {
     members, meetings, attendances, scores, loading,
     fetchAll,
-    accessLogs, logAccess,
+    accessLogs, logAccess, fetchAccessLogs, clearAccessLogs,
     addMember, updateMember, deleteMember,
     addMeeting, updateMeeting, deleteMeeting, generateYearSchedule,
     toggleAttend, isAttending, attendCount,
