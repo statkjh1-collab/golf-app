@@ -144,8 +144,13 @@ export const useGolfStore = defineStore('golf', () => {
   })
 
   const upcomingMeetings = computed(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    return meetings.value.filter(m => m.meet_date >= today && m.status !== 'done').sort((a, b) => a.meet_date.localeCompare(b.meet_date))
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+    const limit = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate())
+    const limitStr = `${limit.getFullYear()}-${String(limit.getMonth()+1).padStart(2,'0')}-${String(limit.getDate()).padStart(2,'0')}`
+    return meetings.value
+      .filter(m => m.meet_date >= today && m.meet_date <= limitStr && m.status !== 'done')
+      .sort((a, b) => a.meet_date.localeCompare(b.meet_date))
   })
 
   const doneMeetings = computed(() =>
