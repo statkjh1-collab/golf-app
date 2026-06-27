@@ -171,7 +171,7 @@ async function shareToKakao() {
     await sendKakaoMemo(text)
     kakaoStatus.value = '카카오톡으로 전송했어요! 💬'
   } catch (e) {
-    kakaoStatus.value = '전송 실패: 카카오 로그인 또는 권한을 확인해주세요.'
+    kakaoStatus.value = '전송 실패: ' + (e?.error_description || e?.message || JSON.stringify(e))
   }
 }
 </script>
