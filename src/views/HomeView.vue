@@ -139,23 +139,23 @@ function formatDate(dateStr) {
 </template>
 
 <style scoped>
-.home { max-width: 860px; margin: 0 auto; padding: 3rem 1.5rem; }
+.home { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem; }
 
-.hero { text-align: center; margin-bottom: 3rem; }
-.hero-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-.hero h1 { font-size: 2rem; font-weight: 800; color: #eaf2e6; margin: 0 0 0.75rem; }
-.hero p { color: #9db39e; font-size: 1rem; margin: 0 0 1.75rem; }
+.hero { text-align: center; margin-bottom: 2rem; }
+.hero-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.hero h1 { font-size: 1.6rem; font-weight: 800; color: #eaf2e6; margin: 0 0 0.6rem; }
+.hero p { color: #9db39e; font-size: 0.9rem; margin: 0 0 1.5rem; word-break: keep-all; }
 .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
-.btn-cta { display: inline-block; background: #4e9a51; color: #fff; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 700; font-size: 1rem; text-decoration: none; }
+.btn-cta { display: inline-block; background: #4e9a51; color: #fff; padding: 0.7rem 1.75rem; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-decoration: none; }
 .btn-cta:hover { background: #3d7a40; }
-.btn-outline { display: inline-block; background: transparent; color: #6fbf6f; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 700; font-size: 1rem; text-decoration: none; border: 2px solid #2c4a33; }
+.btn-outline { display: inline-block; background: transparent; color: #6fbf6f; padding: 0.7rem 1.75rem; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-decoration: none; border: 2px solid #2c4a33; }
 .btn-outline:hover { border-color: #4e9a51; }
 
-.stats { display: flex; gap: 1rem; margin-bottom: 3rem; }
-.stat-card { flex: 1; background: #16271a; border: 1px solid #2c4a33; border-radius: 10px; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem; }
-.stat-number { font-size: 2rem; font-weight: 800; color: #6fbf6f; }
-.stat-label { font-size: 0.9rem; color: #9db39e; }
+.stats { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+.stat-card { flex: 1; background: #16271a; border: 1px solid #2c4a33; border-radius: 10px; padding: 1rem 0.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.2rem; }
+.stat-number { font-size: 1.75rem; font-weight: 800; color: #6fbf6f; }
+.stat-label { font-size: 0.8rem; color: #9db39e; white-space: nowrap; }
 
 .upcoming { margin-bottom: 3rem; }
 .upcoming h2, .rules h2 { font-size: 1.3rem; font-weight: 700; color: #eaf2e6; margin-bottom: 1.25rem; }
