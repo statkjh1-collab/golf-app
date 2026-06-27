@@ -125,20 +125,32 @@ function doFeePreview() {
   const amounts = ratios.map(r => fee ? Math.round(fee * r / 100) * 100 : null)
 
   if (fee && amounts.length > 1) {
-    const lastIdx = amounts.length - 1
-    // 꼴등 5만원 초과 시 초과분을 나머지에 비율 배분
-    if (amounts[lastIdx] > MAX_LAST_FEE) {
-      const excess = amounts[lastIdx] - MAX_LAST_FEE
-      amounts[lastIdx] = MAX_LAST_FEE
-      const othersRatioSum = ratios.slice(0, lastIdx).reduce((a, b) => a + b, 0)
-      for (let i = 0; i < lastIdx; i++) {
-        amounts[i] = Math.round((amounts[i] + excess * (ratios[i] / othersRatioSum)) / 100) * 100
+    // 5만원 초과자 전원 상한 적용 (초과분을 미초과자에게 반복 분배)
+    const capped = new Array(amounts.length).fill(false)
+    let changed = true
+    while (changed) {
+      changed = false
+      let excessTotal = 0
+      for (let i = 0; i < amounts.length; i++) {
+        if (!capped[i] && amounts[i] > MAX_LAST_FEE) {
+          excessTotal += amounts[i] - MAX_LAST_FEE
+          amounts[i] = MAX_LAST_FEE
+          capped[i] = true
+          changed = true
+        }
+      }
+      if (excessTotal > 0) {
+        const freeRatioSum = ratios.reduce((s, r, i) => capped[i] ? s : s + r, 0)
+        for (let i = 0; i < amounts.length; i++) {
+          if (!capped[i]) amounts[i] = Math.round((amounts[i] + excessTotal * (ratios[i] / freeRatioSum)) / 100) * 100
+        }
       }
     }
-    // 반올림 차이 조정: 꼴등이 5만원 고정이면 바로 앞 순위에서, 아니면 꼴등에서
+    // 반올림 차이를 미상한 인원 중 가장 높은 순위에서 조정
     const total = amounts.reduce((a, b) => a + b, 0)
-    const adjustIdx = amounts[lastIdx] === MAX_LAST_FEE ? lastIdx - 1 : lastIdx
-    amounts[adjustIdx] -= (total - fee)
+    const adjustIdx = capped.lastIndexOf(false)
+    if (adjustIdx >= 0) amounts[adjustIdx] -= (total - fee)
+    else amounts[amounts.length - 1] -= (total - fee)
   }
 
   feePreview.value = scores.map((s, i) => ({
