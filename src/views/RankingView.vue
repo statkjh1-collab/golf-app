@@ -38,13 +38,16 @@ function scoresOf(meetingId) {
       <div v-if="store.doneMeetings.length === 0" class="card empty">완료된 모임 기록이 없어요.</div>
       <div v-for="mt in store.doneMeetings" :key="mt.id" class="card">
         <h2>{{ mt.title }}</h2>
-        <p class="dim">{{ mt.meet_date }} · {{ mt.meet_time }}{{ mt.total_fee ? ` · 식대 ${mt.total_fee.toLocaleString()}원` : '' }}</p>
+        <p class="dim">{{ mt.meet_date }} · {{ mt.meet_time }}</p>
+        <div v-if="mt.total_fee" class="fee-summary">
+          총 식대 <strong>{{ Number(mt.total_fee).toLocaleString() }}원</strong>
+        </div>
         <div v-if="scoresOf(mt.id).length === 0" class="empty">기록 없음</div>
         <div v-for="s in scoresOf(mt.id)" :key="s.id" class="list-row">
           <span class="rank-num" :class="{ top: s.rank === 1 }">{{ s.rank }}등</span>
           <span class="row-name">{{ s.name }}</span>
-          <span class="dim">순 {{ s.net }}</span>
-          <span v-if="s.fee_amount != null" class="row-fee">{{ s.fee_amount.toLocaleString() }}원</span>
+          <span class="dim score-net">핸디 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+          <span v-if="s.fee_amount != null" class="row-fee">{{ Number(s.fee_amount).toLocaleString() }}원</span>
         </div>
       </div>
     </div>
@@ -90,5 +93,8 @@ h1 { font-size: 1.6rem; font-weight: 800; color: #eaf2e6; margin: 0 0 1.25rem; }
 .rank-num.top { color: #6fbf6f; }
 .row-name { flex: 1; font-weight: 600; color: #eaf2e6; font-size: 0.95rem; }
 .row-points { font-weight: 800; color: #6fbf6f; font-size: 0.95rem; }
-.row-fee { font-weight: 700; color: #eaf2e6; font-size: 0.85rem; width: 80px; text-align: right; }
+.row-fee { font-weight: 700; color: #6fbf6f; font-size: 0.9rem; margin-left: auto; }
+.score-net { font-size: 0.8rem; }
+.fee-summary { background: #1d3324; border: 1px solid #2c4a33; border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.88rem; color: #9db39e; margin-bottom: 0.75rem; }
+.fee-summary strong { color: #eaf2e6; }
 </style>

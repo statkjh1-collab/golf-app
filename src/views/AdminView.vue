@@ -88,15 +88,11 @@ function buildEntries() {
   return scoreAtts.value.map(a => {
     const m = store.members.find(mb => mb.id === a.member_id)
     const inp = scoreInputs.value[a.member_id] || {}
-    const gross = parseFloat(inp.gross)
     const net_input = parseFloat(inp.net_input)
-    // 핸디 적용 스코어(net_input)가 없으면 항목 제외
     if (isNaN(net_input)) return null
     return {
       member_id: a.member_id,
       name: m?.name,
-      handicap: m?.handicap || 0,
-      gross: isNaN(gross) ? null : gross,
       net_input,
       mulligan: !!inp.mulligan,
     }
@@ -107,7 +103,6 @@ function doPreview() {
   const entries = buildEntries()
   if (!entries.length) return
   const n = entries.length
-  // 순위 기준: 기계 핸디 적용 스코어 + 멀리건
   const withNet = entries
     .map(e => ({ ...e, net: e.net_input + (e.mulligan ? 1 : 0) }))
     .sort((a, b) => a.net - b.net)
@@ -264,14 +259,9 @@ function saveScores() {
           <div class="score-list">
             <div v-for="a in scoreAtts" :key="a.id" class="score-row">
               <span class="score-name">{{ nameOf(a.member_id) }}</span>
-              <input type="number" placeholder="타수"
-                :value="scoreInputs[a.member_id]?.gross ?? ''"
-                @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], gross: $event.target.value }"
-                style="width:64px" />
               <input type="number" placeholder="핸디점수"
                 :value="scoreInputs[a.member_id]?.net_input ?? ''"
-                @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }"
-                style="width:76px" />
+                @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }" />
               <button
                 :class="['btn-mulligan', { active: scoreInputs[a.member_id]?.mulligan }]"
                 @click="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], mulligan: !scoreInputs[a.member_id]?.mulligan }">

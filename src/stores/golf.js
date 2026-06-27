@@ -130,7 +130,6 @@ export const useGolfStore = defineStore('golf', () => {
 
   // 스코어
   async function saveScores(meeting_id, entries, total_fee) {
-    // 순위 기준: 기계 핸디 적용 스코어(net_input) + 멀리건
     const withNet = entries
       .map(e => ({ ...e, net: e.net_input + (e.mulligan ? 1 : 0) }))
       .sort((a, b) => a.net - b.net)
@@ -147,9 +146,9 @@ export const useGolfStore = defineStore('golf', () => {
     const toInsert = withNet.map((e, i) => ({
       meeting_id,
       member_id: e.member_id,
-      gross: e.gross,        // 타수 (핸디 재계산용, null 가능)
+      gross: null,
       mulligan: e.mulligan,
-      net: e.net,            // 기계 핸디점수 + 멀리건
+      net: e.net,
       rank: i + 1,
       ratio: ratios[i] || 0,
       fee_amount: total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null,
@@ -160,17 +159,6 @@ export const useGolfStore = defineStore('golf', () => {
     await supabase.from('meetings').update({ total_fee, status: 'done' }).eq('id', meeting_id)
     const mt = meetings.value.find(m => m.id === meeting_id)
     if (mt) { mt.total_fee = total_fee; mt.status = 'done' }
-
-    // 핸디 자동 재계산 (타수 입력된 경우에만)
-    const participantIds = [...new Set(entries.filter(e => e.gross != null).map(e => e.member_id))]
-    await Promise.all(participantIds.map(async memberId => {
-      const allGross = scores.value.filter(s => s.member_id === memberId && s.gross != null).map(s => s.gross)
-      if (!allGross.length) return
-      const newHc = Math.max(0, Math.round(allGross.reduce((a, b) => a + b, 0) / allGross.length - 72))
-      await supabase.from('members').update({ handicap: newHc }).eq('id', memberId)
-      const m = members.value.find(m => m.id === memberId)
-      if (m) m.handicap = newHc
-    }))
   }
 
   const cumulativeRanking = computed(() => {
