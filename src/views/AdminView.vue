@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useGolfStore } from '@/stores/golf'
 
 const store = useGolfStore()
 const tab = ref('members')
+watch(tab, (val) => { if (val === 'logs') store.fetchAccessLogs() })
 const ADMIN_PW = 'golf1234'
 const pw = ref('')
 const authed = ref(false)
@@ -290,11 +291,11 @@ function saveScores() {
         <h2>접속 로그</h2>
         <p class="dim">일정 화면에서 본인 이름을 선택한 기록입니다.</p>
         <div v-if="store.accessLogs.length === 0" class="empty">아직 접속 기록이 없어요.</div>
-        <div v-for="(log, i) in store.accessLogs" :key="i" class="list-row">
+        <div v-for="log in store.accessLogs" :key="log.id" class="list-row">
           <span><b>{{ log.name }}</b></span>
-          <span class="dim">{{ new Date(log.time).toLocaleString('ko-KR') }}</span>
+          <span class="dim">{{ new Date(log.created_at).toLocaleString('ko-KR') }}</span>
         </div>
-        <button v-if="store.accessLogs.length" class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="store.accessLogs.splice(0); localStorage.removeItem('golf_access_logs')">로그 전체 삭제</button>
+        <button v-if="store.accessLogs.length" class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="store.clearAccessLogs()">로그 전체 삭제</button>
       </div>
 
     </template>
