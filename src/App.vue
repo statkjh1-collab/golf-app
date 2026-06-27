@@ -1,5 +1,10 @@
 <script setup>
+import { onMounted } from 'vue'
 import AppNav from '@/components/AppNav.vue'
+import { useGolfStore } from '@/stores/golf'
+
+const store = useGolfStore()
+onMounted(() => store.fetchAll())
 </script>
 
 <template>

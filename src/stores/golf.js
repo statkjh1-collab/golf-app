@@ -1,45 +1,61 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-
-function load(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
-}
-function save(key, val) { localStorage.setItem(key, JSON.stringify(val)) }
+import { supabase } from '@/lib/supabase'
 
 export const useGolfStore = defineStore('golf', () => {
-  const members = ref(load('golf_members', []))
-  const meetings = ref(load('golf_meetings', []))
-  const attendances = ref(load('golf_attendances', []))
-  const scores = ref(load('golf_scores', []))
-  let _nextId = load('golf_nextId', 1)
-  function nextId() { const id = _nextId++; save('golf_nextId', _nextId); return id }
+  const members = ref([])
+  const meetings = ref([])
+  const attendances = ref([])
+  const scores = ref([])
+  const loading = ref(false)
 
-  function persist() {
-    save('golf_members', members.value)
-    save('golf_meetings', meetings.value)
-    save('golf_attendances', attendances.value)
-    save('golf_scores', scores.value)
-  }
-
-  function addMember(name, handicap) {
-    members.value.push({ id: nextId(), name, handicap: Number(handicap) || 0, active: true })
-    persist()
-  }
-  function updateMember(id, name, handicap) {
-    const m = members.value.find(m => m.id === id)
-    if (m) { m.name = name; m.handicap = Number(handicap) || 0; persist() }
-  }
-  function deleteMember(id) {
-    members.value = members.value.filter(m => m.id !== id); persist()
+  async function fetchAll() {
+    loading.value = true
+    const [m, mt, a, s] = await Promise.all([
+      supabase.from('members').select('*').order('id'),
+      supabase.from('meetings').select('*').order('meet_date'),
+      supabase.from('attendances').select('*'),
+      supabase.from('scores').select('*'),
+    ])
+    members.value = m.data || []
+    meetings.value = mt.data || []
+    attendances.value = a.data || []
+    scores.value = s.data || []
+    loading.value = false
   }
 
-  function addMeeting(title, date, time) {
-    meetings.value.push({ id: nextId(), title, meet_date: date, meet_time: time, capacity: 10, status: 'open', total_fee: null })
-    persist()
+  // 회원
+  async function addMember(name, handicap) {
+    const { data } = await supabase.from('members').insert({ name, handicap: Number(handicap) || 0 }).select().single()
+    if (data) members.value.push(data)
+  }
+  async function updateMember(id, name, handicap) {
+    const { data } = await supabase.from('members').update({ name, handicap: Number(handicap) || 0 }).eq('id', id).select().single()
+    if (data) { const i = members.value.findIndex(m => m.id === id); if (i >= 0) members.value[i] = data }
+  }
+  async function deleteMember(id) {
+    await supabase.from('members').delete().eq('id', id)
+    members.value = members.value.filter(m => m.id !== id)
   }
 
-  function generateYearSchedule(year) {
-    let added = 0
+  // 모임
+  async function addMeeting(title, date, time) {
+    const { data } = await supabase.from('meetings').insert({ title, meet_date: date, meet_time: time, capacity: 10, status: 'open' }).select().single()
+    if (data) meetings.value.push(data)
+  }
+  async function updateMeeting(id, title, date, time) {
+    const { data } = await supabase.from('meetings').update({ title, meet_date: date, meet_time: time }).eq('id', id).select().single()
+    if (data) { const i = meetings.value.findIndex(m => m.id === id); if (i >= 0) meetings.value[i] = data }
+  }
+  async function deleteMeeting(id) {
+    await supabase.from('meetings').delete().eq('id', id)
+    meetings.value = meetings.value.filter(m => m.id !== id)
+    attendances.value = attendances.value.filter(a => a.meeting_id !== id)
+    scores.value = scores.value.filter(s => s.meeting_id !== id)
+  }
+
+  async function generateYearSchedule(year) {
+    const toInsert = []
     for (let month = 0; month < 12; month++) {
       for (const [n, time] of [[2, '15:00'], [4, '11:00']]) {
         const firstDay = new Date(year, month, 1)
@@ -51,36 +67,29 @@ export const useGolfStore = defineStore('golf', () => {
         const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
         if (meetings.value.some(m => m.meet_date === dateStr)) continue
         const weekLabel = n === 2 ? '둘째 주' : '넷째 주'
-        meetings.value.push({
-          id: nextId(),
-          title: `${month + 1}월 ${weekLabel} 정기모임`,
-          meet_date: dateStr,
-          meet_time: time,
-          capacity: 10,
-          status: 'open',
-          total_fee: null,
-        })
-        added++
+        toInsert.push({ title: `${month + 1}월 ${weekLabel} 정기모임`, meet_date: dateStr, meet_time: time, capacity: 10, status: 'open' })
       }
     }
-    persist()
-    return added
-  }
-  function deleteMeeting(id) {
-    meetings.value = meetings.value.filter(m => m.id !== id)
-    attendances.value = attendances.value.filter(a => a.meeting_id !== id)
-    scores.value = scores.value.filter(s => s.meeting_id !== id)
-    persist()
+    if (!toInsert.length) return 0
+    const { data } = await supabase.from('meetings').insert(toInsert).select()
+    if (data) meetings.value.push(...data)
+    return toInsert.length
   }
 
-  function toggleAttend(meeting_id, member_id) {
-    const idx = attendances.value.findIndex(a => a.meeting_id === meeting_id && a.member_id === member_id)
-    if (idx >= 0) { attendances.value.splice(idx, 1); persist(); return true }
+  // 참석
+  async function toggleAttend(meeting_id, member_id) {
+    const existing = attendances.value.find(a => a.meeting_id === meeting_id && a.member_id === member_id)
+    if (existing) {
+      await supabase.from('attendances').delete().eq('id', existing.id)
+      attendances.value = attendances.value.filter(a => a.id !== existing.id)
+      return true
+    }
     const mt = meetings.value.find(m => m.id === meeting_id)
     const cnt = attendances.value.filter(a => a.meeting_id === meeting_id).length
     if (mt && cnt >= mt.capacity) return false
-    attendances.value.push({ id: nextId(), meeting_id, member_id, team: null })
-    persist(); return true
+    const { data } = await supabase.from('attendances').insert({ meeting_id, member_id, team: null }).select().single()
+    if (data) attendances.value.push(data)
+    return true
   }
   function isAttending(meeting_id, member_id) {
     return attendances.value.some(a => a.meeting_id === meeting_id && a.member_id === member_id)
@@ -89,14 +98,20 @@ export const useGolfStore = defineStore('golf', () => {
     return attendances.value.filter(a => a.meeting_id === meeting_id).length
   }
 
-  function assignTeams(meeting_id) {
+  // 조편성
+  async function assignTeams(meeting_id) {
     const atts = attendances.value.filter(a => a.meeting_id === meeting_id)
     const shuffled = [...atts].sort(() => Math.random() - 0.5)
-    shuffled.forEach((a, i) => { a.team = i < Math.ceil(shuffled.length / 2) ? 'A' : 'B' })
-    persist()
+    const updates = shuffled.map((a, i) => ({ ...a, team: i < Math.ceil(shuffled.length / 2) ? 'A' : 'B' }))
+    await Promise.all(updates.map(a => supabase.from('attendances').update({ team: a.team }).eq('id', a.id)))
+    updates.forEach(upd => {
+      const i = attendances.value.findIndex(a => a.id === upd.id)
+      if (i >= 0) attendances.value[i] = upd
+    })
   }
 
-  function saveScores(meeting_id, entries, total_fee) {
+  // 스코어
+  async function saveScores(meeting_id, entries, total_fee) {
     const withNet = entries
       .map(e => ({ ...e, net: e.gross + (e.mulligan ? 1 : 0) - (e.handicap || 0) }))
       .sort((a, b) => a.net - b.net)
@@ -106,27 +121,37 @@ export const useGolfStore = defineStore('golf', () => {
       const sum = raw.reduce((a, b) => a + b, 0)
       return raw.map(r => r / sum)
     })()
+
+    await supabase.from('scores').delete().eq('meeting_id', meeting_id)
     scores.value = scores.value.filter(s => s.meeting_id !== meeting_id)
-    withNet.forEach((e, i) => {
-      const ratio = ratios[i] || 0
-      const fee_amount = total_fee ? Math.round(total_fee * ratio / 100) * 100 : null
-      scores.value.push({ id: nextId(), meeting_id, member_id: e.member_id, gross: e.gross, mulligan: e.mulligan, net: e.net, rank: i + 1, ratio, fee_amount })
-    })
+
+    const toInsert = withNet.map((e, i) => ({
+      meeting_id,
+      member_id: e.member_id,
+      gross: e.gross,
+      mulligan: e.mulligan,
+      net: e.net,
+      rank: i + 1,
+      ratio: ratios[i] || 0,
+      fee_amount: total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null,
+    }))
+    const { data: newScores } = await supabase.from('scores').insert(toInsert).select()
+    if (newScores) scores.value.push(...newScores)
+
+    await supabase.from('meetings').update({ total_fee, status: 'done' }).eq('id', meeting_id)
     const mt = meetings.value.find(m => m.id === meeting_id)
     if (mt) { mt.total_fee = total_fee; mt.status = 'done' }
 
-    // 참가 회원 핸디 자동 재계산 (전체 경기 평균 gross - 72, 최소 0)
+    // 핸디 자동 재계산
     const participantIds = [...new Set(entries.map(e => e.member_id))]
-    participantIds.forEach(memberId => {
+    await Promise.all(participantIds.map(async memberId => {
       const allGross = scores.value.filter(s => s.member_id === memberId).map(s => s.gross)
-      if (allGross.length === 0) return
-      const avg = allGross.reduce((a, b) => a + b, 0) / allGross.length
-      const newHc = Math.max(0, Math.round(avg - 72))
+      if (!allGross.length) return
+      const newHc = Math.max(0, Math.round(allGross.reduce((a, b) => a + b, 0) / allGross.length - 72))
+      await supabase.from('members').update({ handicap: newHc }).eq('id', memberId)
       const m = members.value.find(m => m.id === memberId)
       if (m) m.handicap = newHc
-    })
-
-    persist()
+    }))
   }
 
   const cumulativeRanking = computed(() => {
@@ -158,10 +183,10 @@ export const useGolfStore = defineStore('golf', () => {
   )
 
   return {
-    members, meetings, attendances, scores,
+    members, meetings, attendances, scores, loading,
+    fetchAll,
     addMember, updateMember, deleteMember,
-    addMeeting, deleteMeeting, generateYearSchedule,
-    persistMeetings: persist,
+    addMeeting, updateMeeting, deleteMeeting, generateYearSchedule,
     toggleAttend, isAttending, attendCount,
     assignTeams, saveScores,
     cumulativeRanking, upcomingMeetings, doneMeetings,

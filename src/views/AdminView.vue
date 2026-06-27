@@ -48,15 +48,9 @@ function startEditMeeting(mt) {
   editMtDate.value = mt.meet_date
   editMtTime.value = mt.meet_time
 }
-function confirmEditMeeting() {
+async function confirmEditMeeting() {
   if (!editMtTitle.value.trim() || !editMtDate.value) return
-  const mt = store.meetings.find(m => m.id === editingMtId.value)
-  if (mt) {
-    mt.title = editMtTitle.value.trim()
-    mt.meet_date = editMtDate.value
-    mt.meet_time = editMtTime.value
-    store.persistMeetings()
-  }
+  await store.updateMeeting(editingMtId.value, editMtTitle.value.trim(), editMtDate.value, editMtTime.value)
   editingMtId.value = null
 }
 function cancelEditMeeting() { editingMtId.value = null }
