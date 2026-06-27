@@ -228,11 +228,11 @@ function saveScores() {
           </button>
           <div v-if="teamA.length || teamB.length" class="team-grid">
             <div class="team-box">
-              <b class="team-label green">A조 · {{ teamA.length }}명</b>
+              <b class="team-label green">1번방 · {{ teamA.length }}명</b>
               <div v-for="a in teamA" :key="a.id" class="team-member">{{ nameOf(a.member_id) }}</div>
             </div>
             <div class="team-box">
-              <b class="team-label red">B조 · {{ teamB.length }}명</b>
+              <b class="team-label red">2번방 · {{ teamB.length }}명</b>
               <div v-for="a in teamB" :key="a.id" class="team-member">{{ nameOf(a.member_id) }}</div>
             </div>
           </div>

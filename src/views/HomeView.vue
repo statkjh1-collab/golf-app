@@ -22,6 +22,10 @@ function attendeesOf(meetingId) {
     .filter(Boolean)
 }
 
+function hasTeams(meetingId) {
+  return store.attendances.filter(a => a.meeting_id === meetingId).some(a => a.team)
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr)
   const days = ['일', '월', '화', '수', '목', '금', '토']
@@ -75,19 +79,31 @@ function formatDate(dateStr) {
         <div v-else class="attendees empty-att">아직 참석 신청자가 없어요.</div>
 
         <div class="team-actions">
-          <button class="btn-team" @click="drawTeams(mt.id)" :disabled="store.attendCount(mt.id) < 2">
-            🎲 팀 랜덤 뽑기
+          <button class="btn-team" @click="drawTeams(mt.id)" :disabled="store.attendCount(mt.id) < 2 || hasTeams(mt.id)">
+            🎲 {{ hasTeams(mt.id) ? '방 배정 완료' : '랜덤 방 배정' }}
           </button>
           <RouterLink to="/schedule" class="btn-link">참석 신청 →</RouterLink>
         </div>
 
-        <div v-if="teamResults[mt.id]" class="team-result">
+        <!-- 기존 배정 결과 표시 -->
+        <div v-if="hasTeams(mt.id)" class="team-result">
           <div class="team-box">
-            <span class="team-label green">A조</span>
+            <span class="team-label green">1번방</span>
+            <span>{{ store.attendances.filter(a => a.meeting_id === mt.id && a.team === 'A').map(a => store.members.find(m => m.id === a.member_id)?.name).filter(Boolean).join(', ') }}</span>
+          </div>
+          <div class="team-box">
+            <span class="team-label red">2번방</span>
+            <span>{{ store.attendances.filter(a => a.meeting_id === mt.id && a.team === 'B').map(a => store.members.find(m => m.id === a.member_id)?.name).filter(Boolean).join(', ') }}</span>
+          </div>
+        </div>
+        <!-- 랜덤 뽑기 결과 표시 -->
+        <div v-else-if="teamResults[mt.id]" class="team-result">
+          <div class="team-box">
+            <span class="team-label green">1번방</span>
             <span>{{ teamResults[mt.id].A.join(', ') || '없음' }}</span>
           </div>
           <div class="team-box">
-            <span class="team-label red">B조</span>
+            <span class="team-label red">2번방</span>
             <span>{{ teamResults[mt.id].B.join(', ') || '없음' }}</span>
           </div>
         </div>
