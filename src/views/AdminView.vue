@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useGolfStore } from '@/stores/golf'
+import { sendKakaoMemo } from '@/lib/kakao'
 
 const store = useGolfStore()
 const tab = ref('members')
@@ -82,6 +83,7 @@ const scoreSaved = ref(false)
 const totalFee = ref('')
 const feePreview = ref([])
 const feeSaved = ref(false)
+const kakaoStatus = ref('')
 
 const scoreAtts = computed(() =>
   store.attendances.filter(a => a.meeting_id === Number(selScore.value))
@@ -147,6 +149,30 @@ async function saveFee() {
   const fee = parseFloat(totalFee.value) || 0
   await store.updateMeetingFee(Number(selScore.value), fee, feePreview.value)
   feeSaved.value = true
+}
+
+async function shareToKakao() {
+  const mt = store.meetings.find(m => m.id === Number(selScore.value))
+  const fee = parseFloat(totalFee.value) || 0
+  const lines = feePreview.value.map(r =>
+    `${r.rank}등 ${r.name}  ${r.fee_amount != null ? r.fee_amount.toLocaleString() + '원' : '-'}`
+  )
+  const text = [
+    `🏌️ ${mt?.title || '모임'} 식대 정산`,
+    `총 식대: ${fee.toLocaleString()}원`,
+    '',
+    ...lines,
+    '',
+    '자세히 보기 → agit-golf-app.vercel.app/ranking',
+  ].join('\n')
+
+  kakaoStatus.value = '전송 중...'
+  try {
+    await sendKakaoMemo(text)
+    kakaoStatus.value = '카카오톡으로 전송했어요! 💬'
+  } catch (e) {
+    kakaoStatus.value = '전송 실패: 카카오 로그인 또는 권한을 확인해주세요.'
+  }
 }
 </script>
 
@@ -331,6 +357,10 @@ async function saveFee() {
           </div>
           <button class="btn" style="margin-top:0.75rem;width:100%" @click="saveFee">정산 저장</button>
           <p v-if="feeSaved" class="success">정산 저장 완료! 순위표에 반영됐어요.</p>
+          <button v-if="feeSaved" class="btn-kakao" @click="shareToKakao">
+            💬 카카오톡으로 공유
+          </button>
+          <p v-if="kakaoStatus" :class="kakaoStatus.includes('실패') ? 'error' : 'success'">{{ kakaoStatus }}</p>
         </div>
       </div>
       <!-- 접속 로그 -->
@@ -411,4 +441,6 @@ input, select {
 .pr-rank.top { color: #6fbf6f; }
 .pr-name { flex: 1; font-weight: 600; color: #eaf2e6; font-size: 0.88rem; }
 .pr-fee { width: 80px; text-align: right; font-weight: 700; color: #eaf2e6; font-size: 0.85rem; }
+
+.btn-kakao { display: block; width: 100%; margin-top: 0.6rem; padding: 0.65rem; background: #FEE500; color: #191919; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
 </style>
