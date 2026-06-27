@@ -119,38 +119,22 @@ function doFeePreview() {
   if (!scores.length) return
   const fee = parseFloat(totalFee.value) || 0
   const n = scores.length
-  const raw = n === 1 ? [1] : scores.map((_, i) => 5 + 10 * (i / (n - 1)))
+  // 꼴등이 MAX_LAST_FEE 초과 시 max_raw를 동적으로 줄여 비율 전체 조정
+  // max_raw = 125000n / (fee - 25000n) 으로 꼴등이 정확히 5만원
+  let maxRaw = 15
+  if (n > 1 && fee > 0) {
+    const denom = fee - 25000 * n
+    if (denom > 0) maxRaw = Math.min(15, 125000 * n / denom)
+  }
+  const raw = n === 1 ? [1] : scores.map((_, i) => 5 + (maxRaw - 5) * (i / (n - 1)))
   const sum = raw.reduce((a, b) => a + b, 0)
   const ratios = raw.map(r => r / sum)
   const amounts = ratios.map(r => fee ? Math.round(fee * r / 100) * 100 : null)
 
-  if (fee && amounts.length > 1) {
-    // 5만원 초과자 전원 상한 적용 (초과분을 미초과자에게 반복 분배)
-    const capped = new Array(amounts.length).fill(false)
-    let changed = true
-    while (changed) {
-      changed = false
-      let excessTotal = 0
-      for (let i = 0; i < amounts.length; i++) {
-        if (!capped[i] && amounts[i] > MAX_LAST_FEE) {
-          excessTotal += amounts[i] - MAX_LAST_FEE
-          amounts[i] = MAX_LAST_FEE
-          capped[i] = true
-          changed = true
-        }
-      }
-      if (excessTotal > 0) {
-        const freeRatioSum = ratios.reduce((s, r, i) => capped[i] ? s : s + r, 0)
-        for (let i = 0; i < amounts.length; i++) {
-          if (!capped[i]) amounts[i] = Math.round((amounts[i] + excessTotal * (ratios[i] / freeRatioSum)) / 100) * 100
-        }
-      }
-    }
-    // 반올림 차이를 미상한 인원 중 가장 높은 순위에서 조정
+  // 반올림 차이를 꼴등에서 조정
+  if (fee && amounts.length) {
     const total = amounts.reduce((a, b) => a + b, 0)
-    const adjustIdx = capped.lastIndexOf(false)
-    if (adjustIdx >= 0) amounts[adjustIdx] -= (total - fee)
-    else amounts[amounts.length - 1] -= (total - fee)
+    amounts[amounts.length - 1] -= (total - fee)
   }
 
   feePreview.value = scores.map((s, i) => ({
