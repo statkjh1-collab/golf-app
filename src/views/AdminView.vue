@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useGolfStore } from '@/stores/golf'
-import { sendKakaoMemo } from '@/lib/kakao'
+import { kakaoLoginAndSend, checkAndSendKakaoMessage } from '@/lib/kakao'
 
 const store = useGolfStore()
 const tab = ref('members')
@@ -10,11 +10,27 @@ const ADMIN_PW = 'golf1234'
 const pw = ref('')
 const authed = ref(false)
 const authErr = ref('')
+const kakaoReturnMsg = ref('')
 
 function tryLogin() {
   if (pw.value === ADMIN_PW) { authed.value = true; authErr.value = '' }
   else authErr.value = '비밀번호가 틀렸어요.'
 }
+
+onMounted(async () => {
+  // 카카오 로그인 후 돌아온 경우 - 자동 로그인 복원
+  if (sessionStorage.getItem('kakao_admin_authed') === 'true') {
+    authed.value = true
+    sessionStorage.removeItem('kakao_admin_authed')
+  }
+  // 카카오 access_token으로 메시지 전송
+  try {
+    const sent = await checkAndSendKakaoMessage()
+    if (sent) kakaoReturnMsg.value = '💬 카카오톡으로 전송 완료!'
+  } catch (e) {
+    kakaoReturnMsg.value = '전송 실패: ' + (e?.msg || e?.message || JSON.stringify(e))
+  }
+})
 
 // 회원
 const newName = ref(''); const newHc = ref('')
@@ -166,19 +182,18 @@ async function shareToKakao() {
     '자세히 보기 → agit-golf-app.vercel.app/ranking',
   ].join('\n')
 
-  kakaoStatus.value = '전송 중...'
-  try {
-    await sendKakaoMemo(text)
-    kakaoStatus.value = '카카오톡으로 전송했어요! 💬'
-  } catch (e) {
-    kakaoStatus.value = '전송 실패: ' + (e?.error_description || e?.message || JSON.stringify(e))
-  }
+  sessionStorage.setItem('kakao_admin_authed', 'true')
+  kakaoLoginAndSend(text)
 }
 </script>
 
 <template>
   <main class="page">
     <h1>관리자</h1>
+
+    <div v-if="kakaoReturnMsg" :class="['card', kakaoReturnMsg.includes('실패') ? 'error-card' : 'success-card']">
+      {{ kakaoReturnMsg }}
+    </div>
 
     <div v-if="!authed" class="card">
       <h2>운영진 로그인</h2>
@@ -443,4 +458,6 @@ input, select {
 .pr-fee { width: 80px; text-align: right; font-weight: 700; color: #eaf2e6; font-size: 0.85rem; }
 
 .btn-kakao { display: block; width: 100%; margin-top: 0.6rem; padding: 0.65rem; background: #FEE500; color: #191919; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
+.success-card { background: #1a3320; border-color: #4e9a51; color: #6fbf6f; font-weight: 600; text-align: center; }
+.error-card { background: #2a1a1a; border-color: #e8543e; color: #e8543e; font-weight: 600; }
 </style>
