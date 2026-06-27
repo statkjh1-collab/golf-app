@@ -146,7 +146,7 @@ export const useGolfStore = defineStore('golf', () => {
     const toInsert = withNet.map((e, i) => ({
       meeting_id,
       member_id: e.member_id,
-      gross: null,
+      gross: 0,
       mulligan: e.mulligan,
       net: e.net,
       rank: i + 1,
