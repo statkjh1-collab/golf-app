@@ -132,7 +132,7 @@ function saveScores() {
 
     <template v-else>
       <div class="tabs">
-        <button v-for="[k, label] in [['members','회원'],['meetings','모임'],['teams','조편성'],['scores','스코어·정산']]"
+        <button v-for="[k, label] in [['members','회원'],['meetings','모임'],['teams','조편성'],['scores','스코어·정산'],['logs','접속로그']]"
           :key="k" :class="['tab', { active: tab === k }]" @click="tab = k">{{ label }}</button>
       </div>
 
@@ -285,6 +285,18 @@ function saveScores() {
           <p v-if="saved" class="success">저장 완료! 순위표에 반영됐어요.</p>
         </template>
       </div>
+      <!-- 접속 로그 -->
+      <div v-if="tab === 'logs'" class="card">
+        <h2>접속 로그</h2>
+        <p class="dim">일정 화면에서 본인 이름을 선택한 기록입니다.</p>
+        <div v-if="store.accessLogs.length === 0" class="empty">아직 접속 기록이 없어요.</div>
+        <div v-for="(log, i) in store.accessLogs" :key="i" class="list-row">
+          <span><b>{{ log.name }}</b></span>
+          <span class="dim">{{ new Date(log.time).toLocaleString('ko-KR') }}</span>
+        </div>
+        <button v-if="store.accessLogs.length" class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="store.accessLogs.splice(0); localStorage.removeItem('golf_access_logs')">로그 전체 삭제</button>
+      </div>
+
     </template>
   </main>
 </template>

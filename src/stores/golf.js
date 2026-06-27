@@ -7,7 +7,17 @@ export const useGolfStore = defineStore('golf', () => {
   const meetings = ref([])
   const attendances = ref([])
   const scores = ref([])
+  const accessLogs = ref(JSON.parse(localStorage.getItem('golf_access_logs') || '[]'))
   const loading = ref(false)
+
+  function logAccess(member_id) {
+    const member = members.value.find(m => m.id === member_id)
+    if (!member) return
+    const log = { name: member.name, time: new Date().toISOString() }
+    accessLogs.value.unshift(log)
+    if (accessLogs.value.length > 200) accessLogs.value = accessLogs.value.slice(0, 200)
+    localStorage.setItem('golf_access_logs', JSON.stringify(accessLogs.value))
+  }
 
   async function fetchAll() {
     loading.value = true
@@ -185,6 +195,7 @@ export const useGolfStore = defineStore('golf', () => {
   return {
     members, meetings, attendances, scores, loading,
     fetchAll,
+    accessLogs, logAccess,
     addMember, updateMember, deleteMember,
     addMeeting, updateMeeting, deleteMeeting, generateYearSchedule,
     toggleAttend, isAttending, attendCount,

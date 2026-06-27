@@ -6,6 +6,11 @@ const store = useGolfStore()
 const selectedMember = ref('')
 const msg = ref('')
 
+function onSelectMember(id) {
+  selectedMember.value = id
+  if (id) store.logAccess(Number(id))
+}
+
 function toggleAttend(meeting) {
   if (!selectedMember.value) { msg.value = '먼저 본인 이름을 선택하세요.'; return }
   msg.value = ''
@@ -28,7 +33,7 @@ function attendeesOf(meetingId) {
     <div class="card">
       <h2>본인 선택</h2>
       <p class="dim">참석 신청을 하려면 먼저 본인 이름을 골라주세요.</p>
-      <select v-model="selectedMember">
+      <select :value="selectedMember" @change="onSelectMember($event.target.value)">
         <option value="">이름 선택…</option>
         <option v-for="m in store.members.filter(m => m.active)" :key="m.id" :value="m.id">
           {{ m.name }} (핸디 {{ m.handicap }})
