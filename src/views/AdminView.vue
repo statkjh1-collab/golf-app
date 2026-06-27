@@ -112,6 +112,8 @@ function saveScores() {
   scoreSaved.value = true
 }
 
+const MAX_LAST_FEE = 50000
+
 function doFeePreview() {
   const scores = existingScores.value
   if (!scores.length) return
@@ -121,11 +123,24 @@ function doFeePreview() {
   const sum = raw.reduce((a, b) => a + b, 0)
   const ratios = raw.map(r => r / sum)
   const amounts = ratios.map(r => fee ? Math.round(fee * r / 100) * 100 : null)
-  // 반올림 차이를 꼴등(마지막 인덱스=최고 부담)에서 조정
-  if (fee && amounts.length) {
+
+  if (fee && amounts.length > 1) {
+    const lastIdx = amounts.length - 1
+    // 꼴등 5만원 초과 시 초과분을 나머지에 비율 배분
+    if (amounts[lastIdx] > MAX_LAST_FEE) {
+      const excess = amounts[lastIdx] - MAX_LAST_FEE
+      amounts[lastIdx] = MAX_LAST_FEE
+      const othersRatioSum = ratios.slice(0, lastIdx).reduce((a, b) => a + b, 0)
+      for (let i = 0; i < lastIdx; i++) {
+        amounts[i] = Math.round((amounts[i] + excess * (ratios[i] / othersRatioSum)) / 100) * 100
+      }
+    }
+    // 반올림 차이 조정: 꼴등이 5만원 고정이면 바로 앞 순위에서, 아니면 꼴등에서
     const total = amounts.reduce((a, b) => a + b, 0)
-    amounts[amounts.length - 1] -= (total - fee)
+    const adjustIdx = amounts[lastIdx] === MAX_LAST_FEE ? lastIdx - 1 : lastIdx
+    amounts[adjustIdx] -= (total - fee)
   }
+
   feePreview.value = scores.map((s, i) => ({
     ...s, ratio: ratios[i],
     fee_amount: amounts[i],
