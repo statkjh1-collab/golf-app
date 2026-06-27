@@ -35,7 +35,7 @@ function attendeesOf(meetingId) {
       <p class="dim">참석 신청을 하려면 먼저 본인 이름을 골라주세요.</p>
       <select :value="selectedMember" @change="onSelectMember($event.target.value)">
         <option value="">이름 선택…</option>
-        <option v-for="m in store.members.filter(m => m.active)" :key="m.id" :value="m.id">
+        <option v-for="m in [...store.members.filter(m => m.active)].sort((a,b) => a.name.localeCompare(b.name, 'ko'))" :key="m.id" :value="m.id">
           {{ m.name }} (핸디 {{ m.handicap }})
         </option>
       </select>
