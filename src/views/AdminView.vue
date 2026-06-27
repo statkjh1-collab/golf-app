@@ -76,13 +76,24 @@ function nameOf(id) { return store.members.find(m => m.id === id)?.name || '?' }
 // 스코어
 const selScore = ref('')
 const scoreInputs = ref({})
+const scoreSaved = ref(false)
+
+// 정산
 const totalFee = ref('')
-const preview = ref([])
-const saved = ref(false)
+const feePreview = ref([])
+const feeSaved = ref(false)
 
 const scoreAtts = computed(() =>
   store.attendances.filter(a => a.meeting_id === Number(selScore.value))
 )
+
+// 이미 스코어가 저장된 모임인지
+const existingScores = computed(() =>
+  store.scores.filter(s => s.meeting_id === Number(selScore.value) && s.rank != null)
+    .sort((a, b) => a.rank - b.rank)
+    .map(s => ({ ...s, name: store.members.find(m => m.id === s.member_id)?.name || '?' }))
+)
+const hasScores = computed(() => existingScores.value.length > 0)
 
 function buildEntries() {
   return scoreAtts.value.map(a => {
@@ -90,37 +101,35 @@ function buildEntries() {
     const inp = scoreInputs.value[a.member_id] || {}
     const net_input = parseFloat(inp.net_input)
     if (isNaN(net_input)) return null
-    return {
-      member_id: a.member_id,
-      name: m?.name,
-      net_input,
-      mulligan: !!inp.mulligan,
-    }
+    return { member_id: a.member_id, name: m?.name, net_input, mulligan: !!inp.mulligan }
   }).filter(Boolean)
-}
-
-function doPreview() {
-  const entries = buildEntries()
-  if (!entries.length) return
-  const n = entries.length
-  const withNet = entries
-    .map(e => ({ ...e, net: e.net_input + (e.mulligan ? 1 : 0) }))
-    .sort((a, b) => a.net - b.net)
-  const raw = n === 1 ? [1] : withNet.map((_, i) => 5 + 10 * (i / (n - 1)))
-  const sum = raw.reduce((a, b) => a + b, 0)
-  const ratios = raw.map(r => r / sum)
-  const fee = parseFloat(totalFee.value) || 0
-  preview.value = withNet.map((e, i) => ({
-    ...e, rank: i + 1, ratio: ratios[i],
-    fee_amount: fee ? Math.round(fee * ratios[i] / 100) * 100 : null,
-  }))
 }
 
 function saveScores() {
   const entries = buildEntries()
   if (!entries.length) return
-  store.saveScores(Number(selScore.value), entries, parseFloat(totalFee.value) || 0)
-  saved.value = true
+  store.saveScores(Number(selScore.value), entries, null)
+  scoreSaved.value = true
+}
+
+function doFeePreview() {
+  const scores = existingScores.value
+  if (!scores.length) return
+  const fee = parseFloat(totalFee.value) || 0
+  const n = scores.length
+  const raw = n === 1 ? [1] : scores.map((_, i) => 5 + 10 * (i / (n - 1)))
+  const sum = raw.reduce((a, b) => a + b, 0)
+  const ratios = raw.map(r => r / sum)
+  feePreview.value = scores.map((s, i) => ({
+    ...s, ratio: ratios[i],
+    fee_amount: fee ? Math.round(fee * ratios[i] / 100) * 100 : null,
+  }))
+}
+
+async function saveFee() {
+  const fee = parseFloat(totalFee.value) || 0
+  await store.updateMeetingFee(Number(selScore.value), fee, feePreview.value)
+  feeSaved.value = true
 }
 </script>
 
@@ -247,8 +256,8 @@ function saveScores() {
 
       <!-- 스코어 입력 -->
       <div v-if="tab === 'scores'" class="card">
-        <h2>스코어 입력 · 정산</h2>
-        <select v-model="selScore" @change="scoreInputs={}; preview=[]; saved=false">
+        <h2>① 스코어 입력</h2>
+        <select v-model="selScore" @change="scoreInputs={}; scoreSaved=false; feePreview=[]; feeSaved=false">
           <option value="">모임 선택…</option>
           <option v-for="mt in store.meetings" :key="mt.id" :value="mt.id">{{ mt.title }} ({{ mt.meet_date }})</option>
         </select>
@@ -256,39 +265,56 @@ function saveScores() {
         <p v-if="selScore && scoreAtts.length === 0" class="dim" style="margin-top:0.75rem">참석자가 없습니다.</p>
 
         <template v-if="selScore && scoreAtts.length">
-          <div class="score-list">
-            <div v-for="a in scoreAtts" :key="a.id" class="score-row">
-              <span class="score-name">{{ nameOf(a.member_id) }}</span>
-              <input type="number" placeholder="핸디점수"
-                :value="scoreInputs[a.member_id]?.net_input ?? ''"
-                @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }" />
-              <button
-                :class="['btn-mulligan', { active: scoreInputs[a.member_id]?.mulligan }]"
-                @click="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], mulligan: !scoreInputs[a.member_id]?.mulligan }">
-                멀리건
-              </button>
+          <!-- 이미 저장된 스코어가 있으면 표시 -->
+          <div v-if="hasScores" class="saved-scores">
+            <p class="dim" style="margin:0.75rem 0 0.5rem">저장된 순위</p>
+            <div v-for="s in existingScores" :key="s.id" class="preview-row">
+              <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
+              <span class="pr-name">{{ s.name }}</span>
+              <span class="dim" style="font-size:0.78rem">핸디점수 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
             </div>
+            <button class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="scoreSaved=false; scoreInputs={}">다시 입력</button>
           </div>
 
-          <div class="row-input" style="margin-top:1rem">
-            <input v-model="totalFee" type="number" placeholder="총 식대 금액 (원)" />
-            <button class="btn-ghost" @click="doPreview">미리보기</button>
-          </div>
-
-          <div v-if="preview.length" class="preview-box">
-            <b class="dim" style="font-size:0.8rem">정산 결과</b>
-            <div v-for="r in preview" :key="r.member_id" class="preview-row">
-              <span :class="['pr-rank', { top: r.rank === 1 }]">{{ r.rank }}등</span>
-              <span class="pr-name">{{ r.name }}</span>
-              <span class="dim" style="font-size:0.78rem">순 {{ r.net }}</span>
-              <span class="dim" style="font-size:0.78rem;width:44px;text-align:right">{{ (r.ratio * 100).toFixed(1) }}%</span>
-              <span class="pr-fee">{{ r.fee_amount != null ? r.fee_amount.toLocaleString() + '원' : '-' }}</span>
+          <!-- 스코어 입력 폼 -->
+          <template v-else>
+            <div class="score-list">
+              <div v-for="a in scoreAtts" :key="a.id" class="score-row">
+                <span class="score-name">{{ nameOf(a.member_id) }}</span>
+                <input type="number" placeholder="핸디점수"
+                  :value="scoreInputs[a.member_id]?.net_input ?? ''"
+                  @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }" />
+                <button
+                  :class="['btn-mulligan', { active: scoreInputs[a.member_id]?.mulligan }]"
+                  @click="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], mulligan: !scoreInputs[a.member_id]?.mulligan }">
+                  멀리건
+                </button>
+              </div>
             </div>
-          </div>
-
-          <button class="btn" style="margin-top:1rem" @click="saveScores">저장하기 (순위표에 반영)</button>
-          <p v-if="saved" class="success">저장 완료! 순위표에 반영됐어요.</p>
+            <button class="btn" style="margin-top:1rem" @click="saveScores">스코어 저장</button>
+            <p v-if="scoreSaved" class="success">스코어 저장 완료!</p>
+          </template>
         </template>
+      </div>
+
+      <!-- 정산 입력 -->
+      <div v-if="tab === 'scores' && selScore && hasScores" class="card">
+        <h2>② 식대 정산</h2>
+        <div class="row-input">
+          <input v-model="totalFee" type="number" placeholder="총 식대 금액 (원)" />
+          <button class="btn-ghost" @click="doFeePreview">계산</button>
+        </div>
+
+        <div v-if="feePreview.length" class="preview-box">
+          <div v-for="r in feePreview" :key="r.member_id" class="preview-row">
+            <span :class="['pr-rank', { top: r.rank === 1 }]">{{ r.rank }}등</span>
+            <span class="pr-name">{{ r.name }}</span>
+            <span class="dim" style="font-size:0.78rem">{{ (r.ratio * 100).toFixed(1) }}%</span>
+            <span class="pr-fee">{{ r.fee_amount != null ? r.fee_amount.toLocaleString() + '원' : '-' }}</span>
+          </div>
+          <button class="btn" style="margin-top:0.75rem;width:100%" @click="saveFee">정산 저장</button>
+          <p v-if="feeSaved" class="success">정산 저장 완료! 순위표에 반영됐어요.</p>
+        </div>
       </div>
       <!-- 접속 로그 -->
       <div v-if="tab === 'logs'" class="card">

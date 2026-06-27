@@ -156,9 +156,25 @@ export const useGolfStore = defineStore('golf', () => {
     const { data: newScores } = await supabase.from('scores').insert(toInsert).select()
     if (newScores) scores.value.push(...newScores)
 
-    await supabase.from('meetings').update({ total_fee, status: 'done' }).eq('id', meeting_id)
+    await supabase.from('meetings').update({ status: 'done' }).eq('id', meeting_id)
     const mt = meetings.value.find(m => m.id === meeting_id)
-    if (mt) { mt.total_fee = total_fee; mt.status = 'done' }
+    if (mt) mt.status = 'done'
+  }
+
+  async function updateMeetingFee(meeting_id, total_fee, feeRows) {
+    // 각 참석자별 fee_amount 업데이트
+    await Promise.all(feeRows.map(r =>
+      supabase.from('scores').update({ fee_amount: r.fee_amount, ratio: r.ratio }).eq('id', r.id)
+    ))
+    // meeting에 total_fee 저장
+    await supabase.from('meetings').update({ total_fee }).eq('id', meeting_id)
+    const mt = meetings.value.find(m => m.id === meeting_id)
+    if (mt) mt.total_fee = total_fee
+    // 로컬 scores 업데이트
+    feeRows.forEach(r => {
+      const s = scores.value.find(s => s.id === r.id)
+      if (s) { s.fee_amount = r.fee_amount; s.ratio = r.ratio }
+    })
   }
 
   const cumulativeRanking = computed(() => {
@@ -196,7 +212,7 @@ export const useGolfStore = defineStore('golf', () => {
     addMember, updateMember, deleteMember,
     addMeeting, updateMeeting, deleteMeeting, generateYearSchedule,
     toggleAttend, isAttending, attendCount,
-    assignTeams, saveScores,
+    assignTeams, saveScores, updateMeetingFee,
     cumulativeRanking, upcomingMeetings, doneMeetings,
   }
 })
