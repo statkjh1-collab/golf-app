@@ -37,6 +37,35 @@ export const useGolfStore = defineStore('golf', () => {
     meetings.value.push({ id: nextId(), title, meet_date: date, meet_time: time, capacity: 10, status: 'open', total_fee: null })
     persist()
   }
+
+  function generateYearSchedule(year) {
+    let added = 0
+    for (let month = 0; month < 12; month++) {
+      for (const [n, time] of [[2, '15:00'], [4, '11:00']]) {
+        const firstDay = new Date(year, month, 1)
+        const dow = firstDay.getDay()
+        const firstSunday = dow === 0 ? 1 : 8 - dow
+        const day = firstSunday + (n - 1) * 7
+        const date = new Date(year, month, day)
+        if (date.getMonth() !== month) continue
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+        if (meetings.value.some(m => m.meet_date === dateStr)) continue
+        const weekLabel = n === 2 ? '둘째 주' : '넷째 주'
+        meetings.value.push({
+          id: nextId(),
+          title: `${month + 1}월 ${weekLabel} 정기모임`,
+          meet_date: dateStr,
+          meet_time: time,
+          capacity: 10,
+          status: 'open',
+          total_fee: null,
+        })
+        added++
+      }
+    }
+    persist()
+    return added
+  }
   function deleteMeeting(id) {
     meetings.value = meetings.value.filter(m => m.id !== id)
     attendances.value = attendances.value.filter(a => a.meeting_id !== id)
@@ -126,7 +155,8 @@ export const useGolfStore = defineStore('golf', () => {
   return {
     members, meetings, attendances, scores,
     addMember, updateMember, deleteMember,
-    addMeeting, deleteMeeting,
+    addMeeting, deleteMeeting, generateYearSchedule,
+    persistMeetings: persist,
     toggleAttend, isAttending, attendCount,
     assignTeams, saveScores,
     cumulativeRanking, upcomingMeetings, doneMeetings,

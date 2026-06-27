@@ -40,6 +40,35 @@ function addMeeting() {
   mtTitle.value = ''; mtDate.value = ''
 }
 
+const editingMtId = ref(null)
+const editMtTitle = ref(''); const editMtDate = ref(''); const editMtTime = ref('')
+function startEditMeeting(mt) {
+  editingMtId.value = mt.id
+  editMtTitle.value = mt.title
+  editMtDate.value = mt.meet_date
+  editMtTime.value = mt.meet_time
+}
+function confirmEditMeeting() {
+  if (!editMtTitle.value.trim() || !editMtDate.value) return
+  const mt = store.meetings.find(m => m.id === editingMtId.value)
+  if (mt) {
+    mt.title = editMtTitle.value.trim()
+    mt.meet_date = editMtDate.value
+    mt.meet_time = editMtTime.value
+    store.persistMeetings()
+  }
+  editingMtId.value = null
+}
+function cancelEditMeeting() { editingMtId.value = null }
+
+const autoGenYear = ref(new Date().getFullYear())
+const autoGenMsg = ref('')
+function generateSchedule() {
+  const added = store.generateYearSchedule(Number(autoGenYear.value))
+  autoGenMsg.value = added > 0 ? `${added}개 일정이 추가됐어요.` : '이미 모두 등록된 일정이에요.'
+  setTimeout(() => { autoGenMsg.value = '' }, 3000)
+}
+
 // 조편성
 const selMeeting = ref('')
 const selMeetingAtts = computed(() =>
@@ -145,6 +174,16 @@ function saveScores() {
       <!-- 모임 관리 -->
       <div v-if="tab === 'meetings'" class="card">
         <h2>모임 관리</h2>
+
+        <div class="auto-gen-box">
+          <p class="dim" style="margin:0 0 0.5rem">매월 2째·4째 일요일 정기모임을 자동 생성합니다.</p>
+          <div class="row-input" style="margin-top:0">
+            <input v-model="autoGenYear" type="number" style="width:110px;flex:none" />
+            <button class="btn btn-sm" @click="generateSchedule">연간 일정 자동 생성</button>
+          </div>
+          <p v-if="autoGenMsg" class="success" style="margin-top:0.5rem">{{ autoGenMsg }}</p>
+        </div>
+
         <div class="col-input">
           <input v-model="mtTitle" placeholder="제목 (예: 6월 둘째 주 정기모임)" />
           <div class="row-input" style="margin-top:0">
@@ -155,11 +194,29 @@ function saveScores() {
         </div>
         <div v-if="store.meetings.length === 0" class="empty">모임이 없어요.</div>
         <div v-for="mt in [...store.meetings].sort((a,b) => b.meet_date.localeCompare(a.meet_date))" :key="mt.id" class="list-row">
-          <span>
-            <b>{{ mt.title }}</b><br>
-            <span class="dim">{{ mt.meet_date }} · {{ mt.meet_time }} · {{ mt.status }}</span>
-          </span>
-          <button class="btn-ghost" @click="store.deleteMeeting(mt.id)">삭제</button>
+          <template v-if="editingMtId === mt.id">
+            <div class="edit-inline" style="flex-direction:column;gap:0.4rem">
+              <input v-model="editMtTitle" placeholder="제목" />
+              <div class="row-input" style="margin-top:0">
+                <input v-model="editMtDate" type="date" />
+                <input v-model="editMtTime" type="time" />
+              </div>
+              <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-sm" @click="confirmEditMeeting">저장</button>
+                <button class="btn-ghost" @click="cancelEditMeeting">취소</button>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <span>
+              <b>{{ mt.title }}</b><br>
+              <span class="dim">{{ mt.meet_date }} · {{ mt.meet_time }} · {{ mt.status }}</span>
+            </span>
+            <span style="display:flex;gap:0.5rem">
+              <button class="btn-ghost" @click="startEditMeeting(mt)">수정</button>
+              <button class="btn-ghost btn-del" @click="store.deleteMeeting(mt.id)">삭제</button>
+            </span>
+          </template>
         </div>
       </div>
 
@@ -293,6 +350,7 @@ input, select {
 .btn-mulligan { background: transparent; border: 1px solid #2c4a33; color: #9db39e; border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer; font-size: 0.78rem; white-space: nowrap; }
 .btn-mulligan.active { background: #e8543e; border-color: #e8543e; color: #fff; }
 
+.auto-gen-box { background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; margin-bottom: 1rem; }
 .preview-box { margin-top: 1rem; background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; }
 .preview-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; border-top: 1px solid #2c4a33; }
 .pr-rank { width: 30px; font-weight: 700; color: #9db39e; font-size: 0.85rem; flex-shrink: 0; }
