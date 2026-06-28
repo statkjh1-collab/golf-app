@@ -274,7 +274,7 @@ async function shareToKakao() {
 
       <!-- 조 편성 -->
       <div v-if="tab === 'teams'" class="card">
-        <h2>랜덤 조 편성</h2>
+        <h2>조 편성</h2>
         <select v-model="selMeeting">
           <option value="">모임 선택…</option>
           <option v-for="mt in store.meetings" :key="mt.id" :value="mt.id">{{ mt.title }} ({{ mt.meet_date }})</option>
@@ -282,9 +282,24 @@ async function shareToKakao() {
         <template v-if="selMeeting">
           <p class="dim" style="margin:0.75rem 0 0">참석 신청 {{ selMeetingAtts.length }}명</p>
           <button class="btn" @click="store.assignTeams(Number(selMeeting))">
-            {{ teamA.length || teamB.length ? '다시 섞기' : '2개 조로 편성' }}
+            {{ teamA.length || teamB.length ? '🎲 다시 섞기' : '🎲 랜덤 편성' }}
           </button>
-          <div v-if="teamA.length || teamB.length" class="team-grid">
+
+          <!-- 수동 편집 -->
+          <div v-if="selMeetingAtts.length" style="margin-top:1rem">
+            <p class="dim" style="margin:0 0 0.5rem">팀을 직접 변경할 수 있어요.</p>
+            <div v-for="a in selMeetingAtts" :key="a.id" class="team-edit-row">
+              <span class="team-edit-name">{{ nameOf(a.member_id) }}</span>
+              <div class="team-btn-group">
+                <button :class="['team-btn', { active: a.team === 'A' }]" @click="store.setMemberTeam(a.id, 'A')">1번방</button>
+                <button :class="['team-btn team-btn-b', { active: a.team === 'B' }]" @click="store.setMemberTeam(a.id, 'B')">2번방</button>
+                <button :class="['team-btn team-btn-none', { active: !a.team }]" @click="store.setMemberTeam(a.id, null)">미배정</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 배정 결과 요약 -->
+          <div v-if="teamA.length || teamB.length" class="team-grid" style="margin-top:1rem">
             <div class="team-box">
               <b class="team-label green">1번방 · {{ teamA.length }}명</b>
               <div v-for="a in teamA" :key="a.id" class="team-member">{{ nameOf(a.member_id) }}</div>
@@ -443,6 +458,14 @@ input, select {
 .pr-fee { width: 80px; text-align: right; font-weight: 700; color: #eaf2e6; font-size: 0.85rem; }
 
 .btn-kakao { display: block; width: 100%; margin-top: 0.6rem; padding: 0.65rem; background: #FEE500; color: #191919; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
+
+.team-edit-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-top: 1px solid #2c4a33; }
+.team-edit-name { font-weight: 600; color: #eaf2e6; font-size: 0.9rem; }
+.team-btn-group { display: flex; gap: 0.35rem; }
+.team-btn { background: transparent; border: 1px solid #2c4a33; color: #9db39e; border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.78rem; }
+.team-btn.active { background: #4e9a51; border-color: #4e9a51; color: #fff; font-weight: 700; }
+.team-btn-b.active { background: #e8543e; border-color: #e8543e; }
+.team-btn-none.active { background: #555; border-color: #555; color: #fff; }
 .success-card { background: #1a3320; border-color: #4e9a51; color: #6fbf6f; font-weight: 600; text-align: center; }
 .error-card { background: #2a1a1a; border-color: #e8543e; color: #e8543e; font-weight: 600; }
 </style>

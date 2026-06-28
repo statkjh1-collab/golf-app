@@ -117,6 +117,12 @@ export const useGolfStore = defineStore('golf', () => {
   }
 
   // 조편성
+  async function setMemberTeam(attendance_id, team) {
+    await supabase.from('attendances').update({ team }).eq('id', attendance_id)
+    const a = attendances.value.find(a => a.id === attendance_id)
+    if (a) a.team = team
+  }
+
   async function assignTeams(meeting_id) {
     const atts = attendances.value.filter(a => a.meeting_id === meeting_id)
     const shuffled = [...atts].sort(() => Math.random() - 0.5)
@@ -220,7 +226,7 @@ export const useGolfStore = defineStore('golf', () => {
     addMember, updateMember, deleteMember,
     addMeeting, updateMeeting, deleteMeeting, generateYearSchedule,
     toggleAttend, isAttending, attendCount,
-    assignTeams, saveScores, updateMeetingFee,
+    assignTeams, setMemberTeam, saveScores, updateMeetingFee,
     cumulativeRanking, upcomingMeetings, doneMeetings,
   }
 })
