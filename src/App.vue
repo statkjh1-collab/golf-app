@@ -4,7 +4,7 @@ import AppNav from '@/components/AppNav.vue'
 import { useGolfStore } from '@/stores/golf'
 
 const store = useGolfStore()
-onMounted(() => store.fetchAll())
+onMounted(() => store.init())
 </script>
 
 <template>
