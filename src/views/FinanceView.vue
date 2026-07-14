@@ -7,9 +7,9 @@ onMounted(() => store.fetchTransactions())
 
 // 날짜(모임)별로 묶어서 요약
 const summaryRows = computed(() => {
-  const sorted = [...store.transactions].reverse() // 오래된 순
+  const sorted = [...store.transactions] // 오래된 순(ASC)
 
-  // 날짜+메모 기준으로 그룹핑
+  // 메모 기준으로 그룹핑
   const groups = {}
   sorted.forEach(t => {
     const key = t.memo || t.description || t.date
@@ -19,12 +19,13 @@ const summaryRows = computed(() => {
     groups[key].expense += Number(t.expense || 0)
   })
 
-  // 누적 잔액 계산
+  // 오래된 순으로 누적 잔액 계산 후 최신순으로 표시
   let running = 0
-  return Object.values(groups).map(g => {
+  const withBalance = Object.values(groups).map(g => {
     running += g.income - g.expense
     return { ...g, balance: running }
-  }).reverse() // 최신 순
+  })
+  return withBalance.reverse()
 })
 </script>
 
