@@ -5,7 +5,10 @@ import { shareMessage } from '@/lib/kakao'
 
 const store = useGolfStore()
 const tab = ref('members')
-watch(tab, (val) => { if (val === 'logs') store.fetchAccessLogs() })
+watch(tab, (val) => {
+  if (val === 'logs') store.fetchAccessLogs()
+  if (val === 'finance') store.fetchTransactions()
+})
 const ADMIN_PW = 'golf1234'
 const pw = ref('')
 const authed = ref(false)
@@ -76,8 +79,17 @@ function nameOf(id) { return store.members.find(m => m.id === id)?.name || '?' }
 
 // 스코어
 const selScore = ref('')
+
+// 스코어 탭 진입 시 가장 최근 모임 자동 선택
+watch(tab, (val) => {
+  if (val === 'scores' && !selScore.value && store.meetings.length) {
+    const recent = [...store.meetings].sort((a, b) => b.meet_date.localeCompare(a.meet_date))[0]
+    if (recent) selScore.value = recent.id
+  }
+})
 const scoreInputs = ref({})
 const scoreSaved = ref(false)
+const reEntering = ref(false)
 
 // 정산
 const totalFee = ref('')
@@ -107,10 +119,14 @@ function buildEntries() {
   }).filter(Boolean)
 }
 
-function saveScores() {
+const scoreError = ref('')
+async function saveScores() {
   const entries = buildEntries()
-  if (!entries.length) return
-  store.saveScores(Number(selScore.value), entries, null)
+  if (!entries.length) { scoreError.value = '스코어를 입력해주세요.'; return }
+  scoreError.value = ''
+  const err = await store.saveScores(Number(selScore.value), entries, null)
+  if (err) { scoreError.value = '저장 실패: ' + (err.message || JSON.stringify(err)); return }
+  reEntering.value = false
   scoreSaved.value = true
 }
 
@@ -149,6 +165,84 @@ async function saveFee() {
   const fee = parseFloat(totalFee.value) || 0
   await store.updateMeetingFee(Number(selScore.value), fee, feePreview.value)
   feeSaved.value = true
+}
+
+// 회비 - 회원 납부
+const finTab = ref('payment')
+const txRows = computed(() => {
+  const sorted = [...store.transactions].reverse()
+  let running = 0
+  return sorted.map(t => {
+    running += (t.income || 0) - (t.expense || 0)
+    return { ...t, balance: running }
+  }).reverse()
+})
+const payMeeting = ref('')
+const payAmounts = ref({})  // member_id -> amount
+const payBulk = ref('')
+const paySaving = ref(false)
+
+const payMeetingAtts = computed(() => {
+  if (!payMeeting.value) return []
+  return store.attendances
+    .filter(a => a.meeting_id === Number(payMeeting.value))
+    .map(a => ({ ...a, name: store.members.find(m => m.id === a.member_id)?.name || '?' }))
+})
+
+function applyBulk() {
+  if (!payBulk.value) return
+  payMeetingAtts.value.forEach(a => {
+    payAmounts.value[a.member_id] = payBulk.value
+  })
+}
+
+async function savePayments() {
+  const mt = store.meetings.find(m => m.id === Number(payMeeting.value))
+  const date = mt?.meet_date || new Date().toISOString().slice(0, 10)
+  const entries = payMeetingAtts.value
+    .filter(a => payAmounts.value[a.member_id])
+    .map(a => ({
+      date,
+      description: a.name,
+      income: payAmounts.value[a.member_id],
+      expense: null,
+      memo: mt?.title || '',
+    }))
+  if (!entries.length) return
+  paySaving.value = true
+  for (const e of entries) await store.addTransaction(e)
+  paySaving.value = false
+  payAmounts.value = {}; payBulk.value = ''
+}
+
+// 회비 - 지출
+const expMeeting = ref('')
+const expDate = ref(new Date().toISOString().slice(0, 10))
+const expDesc = ref('')
+const expAmount = ref('')
+const expMemo = ref('')
+
+function onExpMeetingChange() {
+  const mt = store.meetings.find(m => m.id === Number(expMeeting.value))
+  if (mt) {
+    expDate.value = mt.meet_date
+    expMemo.value = mt.title
+  } else {
+    expMemo.value = ''
+  }
+}
+
+async function saveExpense() {
+  if (!expDesc.value.trim() || !expAmount.value) return
+  await store.addTransaction({
+    date: expDate.value,
+    description: expDesc.value.trim(),
+    income: null,
+    expense: expAmount.value,
+    memo: expMemo.value.trim() || null,
+  })
+  expMeeting.value = ''; expDesc.value = ''; expAmount.value = ''; expMemo.value = ''
+  expDate.value = new Date().toISOString().slice(0, 10)
 }
 
 async function shareToKakao() {
@@ -190,7 +284,7 @@ async function shareToKakao() {
 
     <template v-else>
       <div class="tabs">
-        <button v-for="[k, label] in [['members','회원'],['meetings','모임'],['teams','조편성'],['scores','스코어·정산'],['logs','접속로그']]"
+        <button v-for="[k, label] in [['members','회원'],['meetings','모임'],['teams','조편성'],['scores','스코어·정산'],['finance','회비'],['logs','접속로그']]"
           :key="k" :class="['tab', { active: tab === k }]" @click="tab = k">{{ label }}</button>
       </div>
 
@@ -315,7 +409,7 @@ async function shareToKakao() {
       <!-- 스코어 입력 -->
       <div v-if="tab === 'scores'" class="card">
         <h2>① 스코어 입력</h2>
-        <select v-model="selScore" @change="scoreInputs={}; scoreSaved=false; feePreview=[]; feeSaved=false">
+        <select v-model="selScore" @change="scoreInputs={}; scoreSaved=false; scoreError=''; reEntering=false; feePreview=[]; feeSaved=false">
           <option value="">모임 선택…</option>
           <option v-for="mt in store.meetings" :key="mt.id" :value="mt.id">{{ mt.title }} ({{ mt.meet_date }})</option>
         </select>
@@ -324,14 +418,14 @@ async function shareToKakao() {
 
         <template v-if="selScore && scoreAtts.length">
           <!-- 이미 저장된 스코어가 있으면 표시 -->
-          <div v-if="hasScores" class="saved-scores">
+          <div v-if="hasScores && !reEntering" class="saved-scores">
             <p class="dim" style="margin:0.75rem 0 0.5rem">저장된 순위</p>
             <div v-for="s in existingScores" :key="s.id" class="preview-row">
               <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
               <span class="pr-name">{{ s.name }}</span>
               <span class="dim" style="font-size:0.78rem">핸디점수 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
             </div>
-            <button class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="scoreSaved=false; scoreInputs={}">다시 입력</button>
+            <button class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="reEntering=true; scoreSaved=false; scoreInputs={}">다시 입력</button>
           </div>
 
           <!-- 스코어 입력 폼 -->
@@ -339,7 +433,7 @@ async function shareToKakao() {
             <div class="score-list">
               <div v-for="a in scoreAtts" :key="a.id" class="score-row">
                 <span class="score-name">{{ nameOf(a.member_id) }}</span>
-                <input type="number" placeholder="핸디점수"
+                <input type="number" step="0.5" placeholder="핸디점수"
                   :value="scoreInputs[a.member_id]?.net_input ?? ''"
                   @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }" />
                 <button
@@ -350,8 +444,9 @@ async function shareToKakao() {
               </div>
             </div>
             <button class="btn" style="margin-top:1rem" @click="saveScores">스코어 저장</button>
-            <p v-if="scoreSaved" class="success">스코어 저장 완료!</p>
           </template>
+          <p v-if="scoreSaved" class="success" style="margin-top:0.75rem">스코어 저장 완료!</p>
+          <p v-if="scoreError" class="error" style="margin-top:0.75rem">{{ scoreError }}</p>
         </template>
       </div>
 
@@ -378,6 +473,99 @@ async function shareToKakao() {
           <p v-if="kakaoStatus" :class="kakaoStatus.includes('실패') ? 'error' : 'success'">{{ kakaoStatus }}</p>
         </div>
       </div>
+      <!-- 회비 관리 -->
+      <template v-if="tab === 'finance'">
+        <!-- 서브탭 -->
+        <div class="tabs" style="margin-bottom:0.75rem">
+          <button :class="['tab', { active: finTab === 'payment' }]" @click="finTab='payment'">회원 납부</button>
+          <button :class="['tab', { active: finTab === 'expense' }]" @click="finTab='expense'">지출 입력</button>
+          <button :class="['tab', { active: finTab === 'history' }]" @click="finTab='history'; store.fetchTransactions()">전체 내역</button>
+        </div>
+
+        <!-- 회원 납부 -->
+        <div v-if="finTab === 'payment'" class="card">
+          <h2>회원 납부 입력</h2>
+          <select v-model="payMeeting" @change="payAmounts={}; payBulk=''">
+            <option value="">모임 선택…</option>
+            <option v-for="mt in store.meetings" :key="mt.id" :value="mt.id">{{ mt.title }} ({{ mt.meet_date }})</option>
+          </select>
+
+          <template v-if="payMeeting && payMeetingAtts.length">
+            <div class="row-input" style="margin-top:0.75rem">
+              <input type="number" v-model="payBulk" placeholder="일괄 금액 입력 (원)" />
+              <button class="btn-ghost" @click="applyBulk">전체 적용</button>
+            </div>
+            <div class="score-list" style="margin-top:0.5rem">
+              <div v-for="a in payMeetingAtts" :key="a.id" class="score-row">
+                <span class="score-name">{{ a.name }}</span>
+                <input type="number" placeholder="납부 금액"
+                  :value="payAmounts[a.member_id] ?? ''"
+                  @input="payAmounts[a.member_id] = $event.target.value" />
+              </div>
+            </div>
+            <button class="btn" style="margin-top:1rem;width:100%" @click="savePayments" :disabled="paySaving">
+              {{ paySaving ? '저장 중…' : '납부 내역 저장' }}
+            </button>
+          </template>
+          <p v-else-if="payMeeting" class="dim" style="margin-top:0.75rem">참석자가 없습니다.</p>
+        </div>
+
+        <!-- 지출 입력 -->
+        <div v-if="finTab === 'expense'" class="card">
+          <h2>지출 입력</h2>
+          <div class="finance-form">
+            <select v-model="expMeeting" @change="onExpMeetingChange">
+              <option value="">모임 선택 (선택사항)</option>
+              <option v-for="mt in store.meetings" :key="mt.id" :value="mt.id">{{ mt.title }} ({{ mt.meet_date }})</option>
+            </select>
+            <input type="date" v-model="expDate" />
+            <input type="text" v-model="expDesc" placeholder="내용 (예: 스크린 대여비)" />
+            <input type="number" v-model="expAmount" placeholder="금액 (원)" />
+            <input type="text" v-model="expMemo" placeholder="메모" />
+            <button class="btn" @click="saveExpense">추가</button>
+          </div>
+        </div>
+
+        <!-- 전체 내역 -->
+        <div v-if="finTab === 'history'" class="card">
+          <h2>전체 내역</h2>
+          <div class="finance-balance">
+            <span>현재 잔액</span>
+            <strong :style="{ color: store.balance >= 0 ? '#4caf7d' : '#e57373' }">
+              {{ store.balance.toLocaleString() }}원
+            </strong>
+          </div>
+          <p v-if="!txRows.length" class="dim">내역이 없습니다.</p>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>내용</th>
+                  <th>수입</th>
+                  <th>지출</th>
+                  <th>잔액</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="t in txRows" :key="t.id">
+                  <td class="td-date">{{ t.date?.slice(5).replace('-', '/') }}</td>
+                  <td class="td-desc">
+                    {{ t.description }}
+                    <span v-if="t.memo" class="td-memo">{{ t.memo }}</span>
+                  </td>
+                  <td class="td-income">{{ t.income ? Number(t.income).toLocaleString() : '' }}</td>
+                  <td class="td-expense">{{ t.expense ? Number(t.expense).toLocaleString() : '' }}</td>
+                  <td class="td-balance" :style="{ color: t.balance >= 0 ? '#4caf7d' : '#e57373' }">{{ t.balance.toLocaleString() }}</td>
+                  <td><button class="btn-del" style="padding:0.25rem 0.5rem;font-size:0.8rem" @click="store.deleteTransaction(t.id)">삭제</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+
       <!-- 접속 로그 -->
       <div v-if="tab === 'logs'" class="card">
         <h2>접속 로그</h2>
@@ -445,7 +633,7 @@ input, select {
 .score-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
 .score-row { display: flex; align-items: center; gap: 0.5rem; background: #1d3324; border: 1px solid #2c4a33; border-radius: 8px; padding: 0.6rem 0.75rem; }
 .score-name { flex: 1; font-weight: 600; color: #eaf2e6; font-size: 0.9rem; }
-.score-row input { width: 80px; padding: 0.45rem 0.5rem; }
+.score-row input { width: 120px; padding: 0.6rem 0.75rem; font-size: 1rem; }
 .btn-mulligan { background: transparent; border: 1px solid #2c4a33; color: #9db39e; border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer; font-size: 0.78rem; white-space: nowrap; }
 .btn-mulligan.active { background: #e8543e; border-color: #e8543e; color: #fff; }
 
@@ -468,4 +656,25 @@ input, select {
 .team-btn-none.active { background: #555; border-color: #555; color: #fff; }
 .success-card { background: #1a3320; border-color: #4e9a51; color: #6fbf6f; font-weight: 600; text-align: center; }
 .error-card { background: #2a1a1a; border-color: #e8543e; color: #e8543e; font-weight: 600; }
+
+.finance-form { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.75rem; }
+.finance-balance { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; margin-bottom: 0.75rem; font-size: 0.95rem; }
+.finance-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; background: #16271a; border: 1px solid #2c4a33; border-radius: 8px; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.finance-date { font-size: 0.78rem; color: #9db39e; white-space: nowrap; }
+.finance-desc-wrap { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; min-width: 80px; }
+.finance-desc { font-size: 0.875rem; color: #eaf2e6; }
+.finance-memo { font-size: 0.75rem; color: #7a9e80; }
+.finance-income { color: #4caf7d; font-weight: 600; font-size: 0.875rem; white-space: nowrap; }
+.finance-expense { color: #e8543e; font-weight: 600; font-size: 0.875rem; white-space: nowrap; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th { text-align: left; color: #9db39e; font-weight: 600; padding: 0.5rem 0.5rem; border-bottom: 1px solid #2c4a33; white-space: nowrap; }
+td { padding: 0.55rem 0.5rem; border-bottom: 1px solid #1d3324; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.td-date { color: #9db39e; white-space: nowrap; }
+.td-desc { color: #eaf2e6; }
+.td-memo { display: block; font-size: 0.75rem; color: #7a9e80; }
+.td-income { color: #4caf7d; font-weight: 600; text-align: right; white-space: nowrap; }
+.td-expense { color: #e8543e; font-weight: 600; text-align: right; white-space: nowrap; }
+.td-balance { font-weight: 700; text-align: right; white-space: nowrap; }
 </style>
