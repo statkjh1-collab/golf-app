@@ -70,6 +70,15 @@ function generateSchedule() {
 
 // 조편성
 const selMeeting = ref('')
+
+watch(tab, (val) => {
+  if (val === 'teams' && !selMeeting.value && store.meetings.length) {
+    const today = new Date().toISOString().slice(0, 10)
+    const past = store.meetings.filter(m => m.meet_date <= today).sort((a, b) => b.meet_date.localeCompare(a.meet_date))
+    const pick = past[0] || [...store.meetings].sort((a, b) => a.meet_date.localeCompare(b.meet_date))[0]
+    if (pick) selMeeting.value = pick.id
+  }
+})
 const selMeetingAtts = computed(() =>
   store.attendances.filter(a => a.meeting_id === Number(selMeeting.value))
 )
