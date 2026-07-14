@@ -181,12 +181,13 @@ async function saveFee() {
 // 회비 - 회원 납부
 const finTab = ref('payment')
 const txRows = computed(() => {
-  const sorted = [...store.transactions].reverse()
+  const sorted = [...store.transactions] // 오래된 순(ASC)
   let running = 0
-  return sorted.map(t => {
-    running += (t.income || 0) - (t.expense || 0)
+  const withBalance = sorted.map(t => {
+    running += Number(t.income || 0) - Number(t.expense || 0)
     return { ...t, balance: running }
-  }).reverse()
+  })
+  return withBalance.reverse() // 최신순으로 표시
 })
 const editingTxId = ref(null)
 const editTxMemo = ref('')
