@@ -80,11 +80,13 @@ function nameOf(id) { return store.members.find(m => m.id === id)?.name || '?' }
 // 스코어
 const selScore = ref('')
 
-// 스코어 탭 진입 시 가장 최근 모임 자동 선택
+// 스코어 탭 진입 시 오늘 이전 가장 최근 모임 자동 선택
 watch(tab, (val) => {
   if (val === 'scores' && !selScore.value && store.meetings.length) {
-    const recent = [...store.meetings].sort((a, b) => b.meet_date.localeCompare(a.meet_date))[0]
-    if (recent) selScore.value = recent.id
+    const today = new Date().toISOString().slice(0, 10)
+    const past = store.meetings.filter(m => m.meet_date <= today).sort((a, b) => b.meet_date.localeCompare(a.meet_date))
+    const pick = past[0] || [...store.meetings].sort((a, b) => a.meet_date.localeCompare(b.meet_date))[0]
+    if (pick) selScore.value = pick.id
   }
 })
 const scoreInputs = ref({})
