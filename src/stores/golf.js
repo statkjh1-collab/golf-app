@@ -133,6 +133,16 @@ export const useGolfStore = defineStore('golf', () => {
     }))
   }
 
+  // 회비
+  const transactions = ref([])
+  const balance = computed(() =>
+    transactions.value.reduce((sum, t) => sum + Number(t.income || 0) - Number(t.expense || 0), 0)
+  )
+  async function fetchTransactions() {
+    const { data } = await supabase.from('transactions').select('*').order('date').order('id')
+    transactions.value = data || []
+  }
+
   const cumulativeRanking = computed(() => {
     const map = {}
     scores.value.forEach(s => {
@@ -163,6 +173,7 @@ export const useGolfStore = defineStore('golf', () => {
     addMeeting, deleteMeeting,
     toggleAttend, isAttending, attendCount,
     assignTeams, saveScores,
+    transactions, balance, fetchTransactions,
     cumulativeRanking, upcomingMeetings, doneMeetings,
   }
 })
