@@ -142,6 +142,11 @@ export const useGolfStore = defineStore('golf', () => {
     const { data } = await supabase.from('transactions').select('*').order('date').order('id')
     transactions.value = data || []
   }
+  async function updateTransactionMemo(id, memo) {
+    await supabase.from('transactions').update({ memo }).eq('id', id)
+    const t = transactions.value.find(t => t.id === id)
+    if (t) t.memo = memo
+  }
 
   const cumulativeRanking = computed(() => {
     const map = {}
@@ -173,7 +178,7 @@ export const useGolfStore = defineStore('golf', () => {
     addMeeting, deleteMeeting,
     toggleAttend, isAttending, attendCount,
     assignTeams, saveScores,
-    transactions, balance, fetchTransactions,
+    transactions, balance, fetchTransactions, updateTransactionMemo,
     cumulativeRanking, upcomingMeetings, doneMeetings,
   }
 })

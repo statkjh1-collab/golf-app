@@ -188,6 +188,14 @@ const txRows = computed(() => {
     return { ...t, balance: running }
   }).reverse()
 })
+const editingTxId = ref(null)
+const editTxMemo = ref('')
+function startEditTx(t) { editingTxId.value = t.id; editTxMemo.value = t.memo || '' }
+async function confirmEditTx(t) {
+  await store.updateTransactionMemo(t.id, editTxMemo.value)
+  editingTxId.value = null
+}
+
 const payMeeting = ref('')
 const payAmounts = ref({})  // member_id -> amount
 const payBulk = ref('')
@@ -563,13 +571,27 @@ async function shareToKakao() {
                 <tr v-for="t in txRows" :key="t.id">
                   <td class="td-date">{{ t.date?.slice(5).replace('-', '/') }}</td>
                   <td class="td-desc">
-                    {{ t.description }}
-                    <span v-if="t.memo" class="td-memo">{{ t.memo }}</span>
+                    <template v-if="editingTxId === t.id">
+                      <input v-model="editTxMemo" placeholder="메모 입력" class="memo-input" @keydown.enter="confirmEditTx(t)" @keydown.esc="editingTxId=null" />
+                    </template>
+                    <template v-else>
+                      {{ t.description }}
+                      <span v-if="t.memo" class="td-memo">{{ t.memo }}</span>
+                    </template>
                   </td>
                   <td class="td-income">{{ t.income ? Number(t.income).toLocaleString() : '' }}</td>
                   <td class="td-expense">{{ t.expense ? Number(t.expense).toLocaleString() : '' }}</td>
                   <td class="td-balance" :style="{ color: t.balance >= 0 ? '#4caf7d' : '#e57373' }">{{ t.balance.toLocaleString() }}</td>
-                  <td><button class="btn-del" style="padding:0.25rem 0.5rem;font-size:0.8rem" @click="store.deleteTransaction(t.id)">삭제</button></td>
+                  <td style="white-space:nowrap;display:flex;gap:0.3rem">
+                    <template v-if="editingTxId === t.id">
+                      <button class="btn-ghost" style="padding:0.25rem 0.5rem;font-size:0.8rem" @click="confirmEditTx(t)">저장</button>
+                      <button class="btn-ghost" style="padding:0.25rem 0.5rem;font-size:0.8rem" @click="editingTxId=null">취소</button>
+                    </template>
+                    <template v-else>
+                      <button class="btn-ghost" style="padding:0.25rem 0.5rem;font-size:0.8rem" @click="startEditTx(t)">수정</button>
+                      <button class="btn-del" style="padding:0.25rem 0.5rem;font-size:0.8rem" @click="store.deleteTransaction(t.id)">삭제</button>
+                    </template>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -677,6 +699,7 @@ input, select {
 .finance-memo { font-size: 0.75rem; color: #7a9e80; }
 .finance-income { color: #4caf7d; font-weight: 600; font-size: 0.875rem; white-space: nowrap; }
 .finance-expense { color: #e8543e; font-weight: 600; font-size: 0.875rem; white-space: nowrap; }
+.memo-input { background: #0f1b12; border: 1px solid #4e9a51; border-radius: 6px; padding: 0.3rem 0.5rem; color: #eaf2e6; font-size: 0.82rem; width: 100%; box-sizing: border-box; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 th { text-align: left; color: #9db39e; font-weight: 600; padding: 0.5rem 0.5rem; border-bottom: 1px solid #2c4a33; white-space: nowrap; }
