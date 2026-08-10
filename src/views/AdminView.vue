@@ -131,14 +131,21 @@ function buildEntries() {
 }
 
 const scoreError = ref('')
+const scoreSaving = ref(false)
 async function saveScores() {
+  if (scoreSaving.value) return  // 중복 클릭 방지
   const entries = buildEntries()
   if (!entries.length) { scoreError.value = '스코어를 입력해주세요.'; return }
   scoreError.value = ''
-  const err = await store.saveScores(Number(selScore.value), entries, null)
-  if (err) { scoreError.value = '저장 실패: ' + (err.message || JSON.stringify(err)); return }
-  reEntering.value = false
-  scoreSaved.value = true
+  scoreSaving.value = true
+  try {
+    const err = await store.saveScores(Number(selScore.value), entries, null)
+    if (err) { scoreError.value = '저장 실패: ' + (err.message || JSON.stringify(err)); return }
+    reEntering.value = false
+    scoreSaved.value = true
+  } finally {
+    scoreSaving.value = false
+  }
 }
 
 const MAX_LAST_FEE = 50000
@@ -463,7 +470,7 @@ async function shareToKakao() {
                 </button>
               </div>
             </div>
-            <button class="btn" style="margin-top:1rem" @click="saveScores">스코어 저장</button>
+            <button class="btn" style="margin-top:1rem" :disabled="scoreSaving" @click="saveScores">{{ scoreSaving ? '저장 중…' : '스코어 저장' }}</button>
           </template>
           <p v-if="scoreSaved" class="success" style="margin-top:0.75rem">스코어 저장 완료!</p>
           <p v-if="scoreError" class="error" style="margin-top:0.75rem">{{ scoreError }}</p>
