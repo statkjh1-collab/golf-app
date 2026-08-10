@@ -46,7 +46,7 @@ function scoresOf(meetingId) {
         <div v-for="s in scoresOf(mt.id)" :key="s.id" class="list-row">
           <span class="rank-num" :class="{ top: s.rank === 1 }">{{ s.rank }}등</span>
           <span class="row-name">{{ s.name }}</span>
-          <span class="dim score-net">핸디 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+          <span class="dim score-net">순 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
           <span v-if="s.fee_amount != null" class="row-fee">{{ Number(s.fee_amount).toLocaleString() }}원</span>
         </div>
       </div>
