@@ -47,6 +47,27 @@ export const useGolfStore = defineStore('golf', () => {
     if (data) meetings.value.push(data)
   }
 
+  async function updateMeeting(id, title, date, time) {
+    const { data } = await supabase.from('meetings').update({ title, meet_date: date, meet_time: time }).eq('id', id).select().single()
+    if (data) {
+      const idx = meetings.value.findIndex(m => m.id === id)
+      if (idx >= 0) meetings.value[idx] = data
+    }
+  }
+
+  async function updateMeetingFee(meeting_id, total_fee, feeRows) {
+    await supabase.from('meetings').update({ total_fee, status: 'done' }).eq('id', meeting_id)
+    const mt = meetings.value.find(m => m.id === meeting_id)
+    if (mt) { mt.total_fee = total_fee; mt.status = 'done' }
+    await Promise.all(feeRows.map(r =>
+      supabase.from('scores').update({ fee_amount: r.fee_amount, ratio: r.ratio }).eq('id', r.id)
+    ))
+    feeRows.forEach(r => {
+      const s = scores.value.find(s => s.id === r.id)
+      if (s) { s.fee_amount = r.fee_amount; s.ratio = r.ratio }
+    })
+  }
+
   async function deleteMeeting(id) {
     await supabase.from('meetings').delete().eq('id', id)
     meetings.value = meetings.value.filter(m => m.id !== id)
@@ -113,7 +134,8 @@ export const useGolfStore = defineStore('golf', () => {
       fee_amount: total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null,
     }))
 
-    const { data } = await supabase.from('scores').insert(newScores).select()
+    const { data, error } = await supabase.from('scores').insert(newScores).select()
+    if (error) { console.error('scores insert error:', error); return error }
     if (data) scores.value.push(...data)
 
     await supabase.from('meetings').update({ total_fee, status: 'done' }).eq('id', meeting_id)
@@ -123,7 +145,7 @@ export const useGolfStore = defineStore('golf', () => {
     // 핸디 자동 재계산
     const participantIds = [...new Set(entries.map(e => e.member_id))]
     await Promise.all(participantIds.map(async memberId => {
-      const allGross = scores.value.filter(s => s.member_id === memberId).map(s => s.gross)
+      const allGross = scores.value.filter(s => s.member_id === memberId && s.gross > 0).map(s => s.gross)
       if (!allGross.length) return
       const avg = allGross.reduce((a, b) => a + b, 0) / allGross.length
       const newHc = Math.max(0, Math.round(avg - 72))
@@ -184,11 +206,53 @@ export const useGolfStore = defineStore('golf', () => {
     meetings.value.filter(m => m.status === 'done').sort((a, b) => b.meet_date.localeCompare(a.meet_date))
   )
 
+  // 접속 로그 (미사용 스텁)
+  const accessLogs = ref([])
+  function fetchAccessLogs() {}
+  function clearAccessLogs() { accessLogs.value = [] }
+
+  // 조 수동 배정
+  async function setMemberTeam(attendanceId, team) {
+    await supabase.from('attendances').update({ team }).eq('id', attendanceId)
+    const a = attendances.value.find(a => a.id === attendanceId)
+    if (a) a.team = team
+  }
+
+  // 연간 일정 자동 생성
+  async function generateYearSchedule(year) {
+    const existing = meetings.value.map(m => m.meet_date)
+    const toAdd = []
+    for (let month = 1; month <= 12; month++) {
+      // 둘째 주 일요일
+      const d2 = nthWeekday(year, month, 0, 2)
+      if (!existing.includes(d2)) toAdd.push({ title: `${month}월 둘째 주 정기모임`, meet_date: d2, meet_time: '15:00:00', capacity: 10, status: 'open', total_fee: null })
+      // 넷째 주 일요일
+      const d4 = nthWeekday(year, month, 0, 4)
+      if (!existing.includes(d4)) toAdd.push({ title: `${month}월 넷째 주 정기모임`, meet_date: d4, meet_time: '11:00:00', capacity: 10, status: 'open', total_fee: null })
+    }
+    if (!toAdd.length) return 0
+    const { data } = await supabase.from('meetings').insert(toAdd).select()
+    if (data) meetings.value.push(...data)
+    return toAdd.length
+  }
+
+  function nthWeekday(year, month, weekday, nth) {
+    const d = new Date(year, month - 1, 1)
+    let count = 0
+    while (d.getMonth() === month - 1) {
+      if (d.getDay() === weekday) { count++; if (count === nth) return d.toISOString().slice(0, 10) }
+      d.setDate(d.getDate() + 1)
+    }
+    return null
+  }
+
   return {
     members, meetings, attendances, scores, loading,
     init,
     addMember, updateMember, deleteMember,
-    addMeeting, deleteMeeting,
+    addMeeting, updateMeeting, deleteMeeting, updateMeetingFee,
+    accessLogs, fetchAccessLogs, clearAccessLogs,
+    setMemberTeam, generateYearSchedule,
     toggleAttend, isAttending, attendCount,
     assignTeams, saveScores,
     transactions, balance, fetchTransactions, addTransaction, deleteTransaction, updateTransactionMemo,

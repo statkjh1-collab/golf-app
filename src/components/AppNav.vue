@@ -7,6 +7,7 @@
     <div class="nav-links">
       <RouterLink to="/schedule">일정·참석</RouterLink>
       <RouterLink to="/ranking">순위표</RouterLink>
+      <RouterLink to="/finance">회비</RouterLink>
       <RouterLink to="/admin">관리자</RouterLink>
     </div>
   </nav>

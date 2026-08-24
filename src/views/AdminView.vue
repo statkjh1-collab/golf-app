@@ -151,8 +151,8 @@ async function confirmEditScore() {
   // 기존 전체 스코어를 가져와서 해당 사람만 수정 후 전체 재저장
   const allScores = existingScores.value.map(s =>
     s.id === editingScoreId.value
-      ? { member_id: s.member_id, name: s.name, net_input: net, mulligan: editScoreMulligan.value }
-      : { member_id: s.member_id, name: s.name, net_input: s.net, mulligan: s.mulligan }
+      ? { member_id: s.member_id, name: s.name, net_input: net, mulligan: editScoreMulligan.value, gross: s.gross }
+      : { member_id: s.member_id, name: s.name, net_input: s.net, mulligan: s.mulligan, gross: s.gross }
   )
   await store.saveScores(Number(selScore.value), allScores, store.meetings.find(m => m.id === Number(selScore.value))?.total_fee || null)
   editingScoreId.value = null
@@ -482,15 +482,18 @@ async function shareToKakao() {
                 <span class="pr-name">{{ s.name }}</span>
                 <input type="text" inputmode="decimal" v-model="editScoreNet"
                   style="width:70px;padding:0.3rem 0.5rem;font-size:0.85rem;background:#0f1b12;border:1px solid #4e9a51;border-radius:6px;color:#eaf2e6" />
+                <button class="btn-sign" @click="() => { const v = parseFloat(editScoreNet); if (!isNaN(v)) editScoreNet = String(-v) }">±</button>
                 <button :class="['btn-mulligan', { active: editScoreMulligan }]" @click="editScoreMulligan = !editScoreMulligan">멀리건</button>
                 <button class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.8rem" @click="confirmEditScore">{{ editScoreSaving ? '…' : '저장' }}</button>
                 <button class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.8rem" @click="editingScoreId=null">취소</button>
               </template>
               <template v-else>
-                <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
-                <span class="pr-name">{{ s.name }}</span>
-                <span class="dim" style="font-size:0.78rem">핸디점수 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
-                <button class="btn-ghost" style="padding:0.2rem 0.5rem;font-size:0.78rem;margin-left:auto" @click="startEditScore(s)">수정</button>
+                <div style="display:flex;align-items:center;gap:0.5rem;width:100%">
+                  <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
+                  <span class="pr-name">{{ s.name }}</span>
+                  <span class="dim" style="font-size:0.78rem;flex:1">순 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+                  <button class="btn-ghost" style="padding:0.35rem 0.9rem;font-size:0.85rem;flex-shrink:0;min-width:48px" @click="startEditScore(s)">수정</button>
+                </div>
               </template>
             </div>
             <button class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="reEntering=true; scoreSaved=false; scoreInputs={}">전체 다시 입력</button>
@@ -504,6 +507,10 @@ async function shareToKakao() {
                 <input type="text" inputmode="decimal" placeholder="핸디점수"
                   :value="scoreInputs[a.member_id]?.net_input ?? ''"
                   @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }" />
+                <button class="btn-sign" @click="() => {
+                  const v = parseFloat(scoreInputs[a.member_id]?.net_input)
+                  if (!isNaN(v)) scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: String(-v) }
+                }">±</button>
                 <button
                   :class="['btn-mulligan', { active: scoreInputs[a.member_id]?.mulligan }]"
                   @click="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], mulligan: !scoreInputs[a.member_id]?.mulligan }">
@@ -718,6 +725,7 @@ input, select {
 .score-row input { width: 120px; padding: 0.6rem 0.75rem; font-size: 1rem; }
 .btn-mulligan { background: transparent; border: 1px solid #2c4a33; color: #9db39e; border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer; font-size: 0.78rem; white-space: nowrap; }
 .btn-mulligan.active { background: #e8543e; border-color: #e8543e; color: #fff; }
+.btn-sign { background: #2c4a33; border: 1px solid #3d6642; color: #eaf2e6; border-radius: 6px; padding: 0.4rem 0.6rem; cursor: pointer; font-size: 0.85rem; font-weight: 700; flex-shrink: 0; }
 
 .auto-gen-box { background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; margin-bottom: 1rem; }
 .preview-box { margin-top: 1rem; background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; }

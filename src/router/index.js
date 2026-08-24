@@ -9,6 +9,7 @@ const router = createRouter({
     { path: '/ranking', component: () => import('../views/RankingView.vue') },
     { path: '/register', component: () => import('../views/RegisterView.vue') },
     { path: '/admin', component: () => import('../views/AdminView.vue') },
+    { path: '/finance', component: () => import('../views/FinanceView.vue') },
   ],
 })
 
