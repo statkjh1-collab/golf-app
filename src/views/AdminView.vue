@@ -460,7 +460,7 @@ async function shareToKakao() {
             <div class="score-list">
               <div v-for="a in scoreAtts" :key="a.id" class="score-row">
                 <span class="score-name">{{ nameOf(a.member_id) }}</span>
-                <input type="number" step="0.5" placeholder="핸디점수"
+                <input type="text" inputmode="decimal" placeholder="핸디점수"
                   :value="scoreInputs[a.member_id]?.net_input ?? ''"
                   @input="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: $event.target.value }" />
                 <button
