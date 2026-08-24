@@ -130,6 +130,35 @@ function buildEntries() {
   }).filter(Boolean)
 }
 
+// 1명씩 수정
+const editingScoreId = ref(null)  // score.id
+const editScoreNet = ref('')
+const editScoreMulligan = ref(false)
+const editScoreSaving = ref(false)
+
+function startEditScore(s) {
+  editingScoreId.value = s.id
+  editScoreNet.value = s.net
+  editScoreMulligan.value = s.mulligan
+}
+
+async function confirmEditScore() {
+  if (editScoreSaving.value) return
+  const net = parseFloat(editScoreNet.value)
+  if (isNaN(net)) return
+  editScoreSaving.value = true
+
+  // 기존 전체 스코어를 가져와서 해당 사람만 수정 후 전체 재저장
+  const allScores = existingScores.value.map(s =>
+    s.id === editingScoreId.value
+      ? { member_id: s.member_id, name: s.name, net_input: net, mulligan: editScoreMulligan.value }
+      : { member_id: s.member_id, name: s.name, net_input: s.net, mulligan: s.mulligan }
+  )
+  await store.saveScores(Number(selScore.value), allScores, store.meetings.find(m => m.id === Number(selScore.value))?.total_fee || null)
+  editingScoreId.value = null
+  editScoreSaving.value = false
+}
+
 const scoreError = ref('')
 const scoreSaving = ref(false)
 async function saveScores() {
@@ -448,11 +477,23 @@ async function shareToKakao() {
           <div v-if="hasScores && !reEntering" class="saved-scores">
             <p class="dim" style="margin:0.75rem 0 0.5rem">저장된 순위</p>
             <div v-for="s in existingScores" :key="s.id" class="preview-row">
-              <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
-              <span class="pr-name">{{ s.name }}</span>
-              <span class="dim" style="font-size:0.78rem">핸디점수 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+              <template v-if="editingScoreId === s.id">
+                <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
+                <span class="pr-name">{{ s.name }}</span>
+                <input type="text" inputmode="decimal" v-model="editScoreNet"
+                  style="width:70px;padding:0.3rem 0.5rem;font-size:0.85rem;background:#0f1b12;border:1px solid #4e9a51;border-radius:6px;color:#eaf2e6" />
+                <button :class="['btn-mulligan', { active: editScoreMulligan }]" @click="editScoreMulligan = !editScoreMulligan">멀리건</button>
+                <button class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.8rem" @click="confirmEditScore">{{ editScoreSaving ? '…' : '저장' }}</button>
+                <button class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.8rem" @click="editingScoreId=null">취소</button>
+              </template>
+              <template v-else>
+                <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
+                <span class="pr-name">{{ s.name }}</span>
+                <span class="dim" style="font-size:0.78rem">핸디점수 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+                <button class="btn-ghost" style="padding:0.2rem 0.5rem;font-size:0.78rem;margin-left:auto" @click="startEditScore(s)">수정</button>
+              </template>
             </div>
-            <button class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="reEntering=true; scoreSaved=false; scoreInputs={}">다시 입력</button>
+            <button class="btn-ghost" style="margin-top:0.75rem;width:100%" @click="reEntering=true; scoreSaved=false; scoreInputs={}">전체 다시 입력</button>
           </div>
 
           <!-- 스코어 입력 폼 -->

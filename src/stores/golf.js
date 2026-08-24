@@ -90,7 +90,7 @@ export const useGolfStore = defineStore('golf', () => {
 
   async function saveScores(meeting_id, entries, total_fee) {
     const withNet = entries
-      .map(e => ({ ...e, net: e.gross + (e.mulligan ? 1 : 0) - (e.handicap || 0) }))
+      .map(e => ({ ...e, net: e.net_input != null ? Number(e.net_input) : e.gross + (e.mulligan ? 1 : 0) - (e.handicap || 0) }))
       .sort((a, b) => a.net - b.net)
     const n = withNet.length
     const ratios = n <= 0 ? [] : n === 1 ? [1] : (() => {
