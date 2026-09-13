@@ -154,9 +154,14 @@ async function confirmEditScore() {
       ? { member_id: s.member_id, name: s.name, net_input: net, mulligan: editScoreMulligan.value, gross: s.gross }
       : { member_id: s.member_id, name: s.name, net_input: s.net, mulligan: s.mulligan, gross: s.gross }
   )
-  await store.saveScores(Number(selScore.value), allScores, store.meetings.find(m => m.id === Number(selScore.value))?.total_fee || null)
-  editingScoreId.value = null
-  editScoreSaving.value = false
+  try {
+    const err = await store.saveScores(Number(selScore.value), allScores, store.meetings.find(m => m.id === Number(selScore.value))?.total_fee || null)
+    if (err) { scoreError.value = '저장 실패: ' + (err.message || JSON.stringify(err)); return }
+    scoreError.value = ''
+    editingScoreId.value = null
+  } finally {
+    editScoreSaving.value = false
+  }
 }
 
 const scoreError = ref('')
