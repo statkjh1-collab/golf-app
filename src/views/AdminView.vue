@@ -276,6 +276,44 @@ async function savePayments() {
   payAmounts.value = {}; payBulk.value = ''
 }
 
+// 회비 - 찬조 (참석자 목록과 무관하게 이름을 직접 입력)
+const donMeeting = ref('')
+const donDate = ref(new Date().toISOString().slice(0, 10))
+const donName = ref('')
+const donAmount = ref('')
+const donMemo = ref('')
+const donSaving = ref(false)
+const donSaved = ref(false)
+
+function onDonMeetingChange() {
+  const mt = store.meetings.find(m => m.id === Number(donMeeting.value))
+  if (mt) {
+    donDate.value = mt.meet_date
+    donMemo.value = mt.title
+  } else {
+    donMemo.value = ''
+  }
+}
+
+async function saveDonation() {
+  if (donSaving.value) return
+  if (!donName.value.trim() || !donAmount.value) return
+  donSaving.value = true
+  try {
+    await store.addTransaction({
+      date: donDate.value,
+      description: `${donName.value.trim()} (찬조)`,
+      income: donAmount.value,
+      expense: null,
+      memo: donMemo.value.trim() || null,
+    })
+    donSaved.value = true
+    donName.value = ''; donAmount.value = ''
+  } finally {
+    donSaving.value = false
+  }
+}
+
 // 회비 - 지출
 const expMeeting = ref('')
 const expDate = ref(new Date().toISOString().slice(0, 10))
@@ -558,6 +596,7 @@ async function shareToKakao() {
         <!-- 서브탭 -->
         <div class="tabs" style="margin-bottom:0.75rem">
           <button :class="['tab', { active: finTab === 'payment' }]" @click="finTab='payment'">회원 납부</button>
+          <button :class="['tab', { active: finTab === 'donation' }]" @click="finTab='donation'; donSaved=false">찬조 입력</button>
           <button :class="['tab', { active: finTab === 'expense' }]" @click="finTab='expense'">지출 입력</button>
           <button :class="['tab', { active: finTab === 'history' }]" @click="finTab='history'; store.fetchTransactions()">전체 내역</button>
         </div>
@@ -588,6 +627,24 @@ async function shareToKakao() {
             </button>
           </template>
           <p v-else-if="payMeeting" class="dim" style="margin-top:0.75rem">참석자가 없습니다.</p>
+        </div>
+
+        <!-- 찬조 입력 -->
+        <div v-if="finTab === 'donation'" class="card">
+          <h2>찬조 입력</h2>
+          <p class="dim" style="margin:0 0 0.75rem;font-size:0.82rem">참석 여부와 상관없이 이름을 직접 적어 넣을 수 있어요.</p>
+          <div class="finance-form">
+            <select v-model="donMeeting" @change="onDonMeetingChange">
+              <option value="">모임 선택 (선택사항)</option>
+              <option v-for="mt in store.meetings" :key="mt.id" :value="mt.id">{{ mt.title }} ({{ mt.meet_date }})</option>
+            </select>
+            <input type="date" v-model="donDate" />
+            <input type="text" v-model="donName" placeholder="찬조하신 분 이름" />
+            <input type="number" v-model="donAmount" placeholder="금액 (원)" />
+            <input type="text" v-model="donMemo" placeholder="메모" />
+            <button class="btn" :disabled="donSaving" @click="saveDonation">{{ donSaving ? '저장 중…' : '추가' }}</button>
+          </div>
+          <p v-if="donSaved" class="success" style="margin-top:0.75rem">찬조 내역을 추가했어요.</p>
         </div>
 
         <!-- 지출 입력 -->

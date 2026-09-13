@@ -120,15 +120,6 @@ export const useGolfStore = defineStore('golf', () => {
       return raw.map(r => r / sum)
     })()
 
-    const { error: delError } = await supabase.from('scores').delete().eq('meeting_id', meeting_id)
-    if (delError) { console.error('scores delete error:', delError); return delError }
-
-    // 삭제가 실제로 반영됐는지 확인 — 남아있으면 INSERT 시 중복이 생김
-    const { data: leftover } = await supabase.from('scores').select('id').eq('meeting_id', meeting_id)
-    if (leftover?.length) return { message: `기존 스코어 ${leftover.length}건이 삭제되지 않았어요. 새로고침 후 다시 시도해주세요.` }
-
-    scores.value = scores.value.filter(s => s.meeting_id !== meeting_id)
-
     const newScores = withNet.map((e, i) => ({
       meeting_id,
       member_id: e.member_id,
@@ -140,8 +131,22 @@ export const useGolfStore = defineStore('golf', () => {
       fee_amount: total_fee ? Math.round(total_fee * (ratios[i] || 0) / 100) * 100 : null,
     }))
 
-    const { data, error } = await supabase.from('scores').insert(newScores).select()
-    if (error) { console.error('scores insert error:', error); return error }
+    const { data, error } = await supabase
+      .from('scores')
+      .upsert(newScores, { onConflict: 'meeting_id,member_id' })
+      .select()
+    if (error) { console.error('scores upsert error:', error); return error }
+
+    // 이번에 제출되지 않은 회원의 기존 스코어는 제거 (참석자에서 빠진 경우)
+    const keepIds = withNet.map(e => e.member_id)
+    const { error: pruneError } = await supabase
+      .from('scores')
+      .delete()
+      .eq('meeting_id', meeting_id)
+      .not('member_id', 'in', `(${keepIds.join(',')})`)
+    if (pruneError) { console.error('scores prune error:', pruneError); return pruneError }
+
+    scores.value = scores.value.filter(s => s.meeting_id !== meeting_id)
     if (data) scores.value.push(...data)
 
     await supabase.from('meetings').update({ total_fee, status: 'done' }).eq('id', meeting_id)
