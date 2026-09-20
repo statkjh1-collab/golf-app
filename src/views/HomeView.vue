@@ -121,7 +121,7 @@ function formatDate(dateStr) {
         <div class="rule-card">
           <span class="rule-icon">🏌️</span>
           <strong>핸디캡 적용</strong>
-          <p>순스코어 = 타수 + 멀리건 − 핸디<br>멀리건 1회 제공</p>
+          <p>순스코어 = 타수 − 핸디<br>순스코어 순으로 순위 결정</p>
         </div>
         <div class="rule-card">
           <span class="rule-icon">🎲</span>

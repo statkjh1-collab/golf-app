@@ -111,7 +111,7 @@ export const useGolfStore = defineStore('golf', () => {
 
   async function saveScores(meeting_id, entries, total_fee) {
     const withNet = entries
-      .map(e => ({ ...e, net: e.net_input != null ? Number(e.net_input) : e.gross + (e.mulligan ? 1 : 0) - (e.handicap || 0) }))
+      .map(e => ({ ...e, net: e.net_input != null ? Number(e.net_input) : e.gross - (e.handicap || 0) }))
       .sort((a, b) => a.net - b.net)
     const n = withNet.length
     const ratios = n <= 0 ? [] : n === 1 ? [1] : (() => {
@@ -124,7 +124,7 @@ export const useGolfStore = defineStore('golf', () => {
       meeting_id,
       member_id: e.member_id,
       gross: e.gross,
-      mulligan: e.mulligan,
+      mulligan: false,
       net: e.net,
       rank: i + 1,
       ratio: ratios[i] || 0,
@@ -198,13 +198,19 @@ export const useGolfStore = defineStore('golf', () => {
     const map = {}
     scores.value.forEach(s => {
       if (s.rank == null) return
-      if (!map[s.member_id]) map[s.member_id] = { games: 0, points: 0, wins: 0 }
+      if (!map[s.member_id]) map[s.member_id] = { games: 0, points: 0, wins: 0, netSum: 0 }
       map[s.member_id].games++
       map[s.member_id].points += Math.max(11 - s.rank, 1)
+      map[s.member_id].netSum += Number(s.net) || 0
       if (s.rank === 1) map[s.member_id].wins++
     })
     return Object.entries(map)
-      .map(([id, v]) => ({ id: Number(id), name: members.value.find(m => m.id === Number(id))?.name || '?', ...v }))
+      .map(([id, v]) => ({
+        id: Number(id),
+        name: members.value.find(m => m.id === Number(id))?.name || '?',
+        ...v,
+        avgNet: v.games ? v.netSum / v.games : 0,
+      }))
       .sort((a, b) => b.points - a.points)
   })
 

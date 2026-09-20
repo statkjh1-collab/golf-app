@@ -126,20 +126,18 @@ function buildEntries() {
     const inp = scoreInputs.value[a.member_id] || {}
     const net_input = parseFloat(inp.net_input)
     if (isNaN(net_input)) return null
-    return { member_id: a.member_id, name: m?.name, net_input, mulligan: !!inp.mulligan }
+    return { member_id: a.member_id, name: m?.name, net_input }
   }).filter(Boolean)
 }
 
 // 1명씩 수정
 const editingScoreId = ref(null)  // score.id
 const editScoreNet = ref('')
-const editScoreMulligan = ref(false)
 const editScoreSaving = ref(false)
 
 function startEditScore(s) {
   editingScoreId.value = s.id
   editScoreNet.value = s.net
-  editScoreMulligan.value = s.mulligan
 }
 
 async function confirmEditScore() {
@@ -151,8 +149,8 @@ async function confirmEditScore() {
   // 기존 전체 스코어를 가져와서 해당 사람만 수정 후 전체 재저장
   const allScores = existingScores.value.map(s =>
     s.id === editingScoreId.value
-      ? { member_id: s.member_id, name: s.name, net_input: net, mulligan: editScoreMulligan.value, gross: s.gross }
-      : { member_id: s.member_id, name: s.name, net_input: s.net, mulligan: s.mulligan, gross: s.gross }
+      ? { member_id: s.member_id, name: s.name, net_input: net, gross: s.gross }
+      : { member_id: s.member_id, name: s.name, net_input: s.net, gross: s.gross }
   )
   try {
     const err = await store.saveScores(Number(selScore.value), allScores, store.meetings.find(m => m.id === Number(selScore.value))?.total_fee || null)
@@ -526,7 +524,6 @@ async function shareToKakao() {
                 <input type="text" inputmode="decimal" v-model="editScoreNet"
                   style="width:70px;padding:0.3rem 0.5rem;font-size:0.85rem;background:#0f1b12;border:1px solid #4e9a51;border-radius:6px;color:#eaf2e6" />
                 <button class="btn-sign" @click="() => { const v = parseFloat(editScoreNet); if (!isNaN(v)) editScoreNet = String(-v) }">±</button>
-                <button :class="['btn-mulligan', { active: editScoreMulligan }]" @click="editScoreMulligan = !editScoreMulligan">멀리건</button>
                 <button class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.8rem" @click="confirmEditScore">{{ editScoreSaving ? '…' : '저장' }}</button>
                 <button class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.8rem" @click="editingScoreId=null">취소</button>
               </template>
@@ -534,7 +531,7 @@ async function shareToKakao() {
                 <div style="display:flex;align-items:center;gap:0.5rem;width:100%">
                   <span :class="['pr-rank', { top: s.rank === 1 }]">{{ s.rank }}등</span>
                   <span class="pr-name">{{ s.name }}</span>
-                  <span class="dim" style="font-size:0.78rem;flex:1">순 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+                  <span class="dim" style="font-size:0.78rem;flex:1">순 {{ s.net }}</span>
                   <button class="btn-ghost" style="padding:0.35rem 0.9rem;font-size:0.85rem;flex-shrink:0;min-width:48px" @click="startEditScore(s)">수정</button>
                 </div>
               </template>
@@ -554,11 +551,6 @@ async function shareToKakao() {
                   const v = parseFloat(scoreInputs[a.member_id]?.net_input)
                   if (!isNaN(v)) scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], net_input: String(-v) }
                 }">±</button>
-                <button
-                  :class="['btn-mulligan', { active: scoreInputs[a.member_id]?.mulligan }]"
-                  @click="scoreInputs[a.member_id] = { ...scoreInputs[a.member_id], mulligan: !scoreInputs[a.member_id]?.mulligan }">
-                  멀리건
-                </button>
               </div>
             </div>
             <button class="btn" style="margin-top:1rem" :disabled="scoreSaving" @click="saveScores">{{ scoreSaving ? '저장 중…' : '스코어 저장' }}</button>
@@ -783,11 +775,9 @@ input, select {
 
 .score-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
 .score-row { display: flex; align-items: center; gap: 0.5rem; background: #1d3324; border: 1px solid #2c4a33; border-radius: 8px; padding: 0.6rem 0.75rem; }
-.score-name { flex: 1; font-weight: 600; color: #eaf2e6; font-size: 0.9rem; }
-.score-row input { width: 120px; padding: 0.6rem 0.75rem; font-size: 1rem; }
-.btn-mulligan { background: transparent; border: 1px solid #2c4a33; color: #9db39e; border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer; font-size: 0.78rem; white-space: nowrap; }
-.btn-mulligan.active { background: #e8543e; border-color: #e8543e; color: #fff; }
-.btn-sign { background: #2c4a33; border: 1px solid #3d6642; color: #eaf2e6; border-radius: 6px; padding: 0.4rem 0.6rem; cursor: pointer; font-size: 0.85rem; font-weight: 700; flex-shrink: 0; }
+.score-name { flex: 0 0 auto; white-space: nowrap; font-weight: 600; color: #eaf2e6; font-size: 0.9rem; }
+.score-row input { flex: 1; min-width: 0; width: auto; padding: 0.6rem 0.75rem; font-size: 1rem; }
+.btn-sign { background: #2c4a33; border: 1px solid #3d6642; color: #eaf2e6; border-radius: 6px; padding: 0.55rem 0; cursor: pointer; font-size: 1rem; font-weight: 700; flex: 0 0 40px; }
 
 .auto-gen-box { background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; margin-bottom: 1rem; }
 .preview-box { margin-top: 1rem; background: #1d3324; border: 1px solid #2c4a33; border-radius: 10px; padding: 0.875rem; }

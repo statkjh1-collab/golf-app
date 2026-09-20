@@ -26,11 +26,16 @@ function scoresOf(meetingId) {
       <h2>누적 랭킹</h2>
       <p class="dim">1등 10점 ~ 최소 1점 합산 기준</p>
       <div v-if="store.cumulativeRanking.length === 0" class="empty">아직 집계된 기록이 없어요.</div>
-      <div v-for="(r, i) in store.cumulativeRanking" :key="r.id" class="list-row">
-        <span class="rank-num" :class="{ top: i < 3 }">{{ i + 1 }}</span>
-        <span class="row-name">{{ r.name }}</span>
-        <span class="dim">{{ r.games }}경기 · {{ r.wins }}승</span>
-        <span class="row-points">{{ r.points }}점</span>
+      <div v-for="(r, i) in store.cumulativeRanking" :key="r.id" class="rank-card">
+        <div class="rank-main">
+          <span class="rank-num" :class="{ top: i < 3 }">{{ i + 1 }}</span>
+          <span class="row-name">{{ r.name }}</span>
+          <span class="row-points">{{ r.points }}점</span>
+        </div>
+        <div class="rank-stats">
+          <span>{{ r.games }}경기 · {{ r.wins }}승</span>
+          <span>평균스코어 <strong>{{ r.avgNet.toFixed(1) }}</strong></span>
+        </div>
       </div>
     </div>
 
@@ -46,7 +51,7 @@ function scoresOf(meetingId) {
         <div v-for="s in scoresOf(mt.id)" :key="s.id" class="list-row">
           <span class="rank-num" :class="{ top: s.rank === 1 }">{{ s.rank }}등</span>
           <span class="row-name">{{ s.name }}</span>
-          <span class="dim score-net">순 {{ s.net }}{{ s.mulligan ? ' (멀리건)' : '' }}</span>
+          <span class="dim score-net">순 {{ s.net }}</span>
           <span v-if="s.fee_amount != null" class="row-fee">{{ Number(s.fee_amount).toLocaleString() }}원</span>
         </div>
       </div>
@@ -89,6 +94,10 @@ h1 { font-size: 1.6rem; font-weight: 800; color: #eaf2e6; margin: 0 0 1.25rem; }
   border-top: 1px solid #2c4a33;
 }
 
+.rank-card { padding: 0.6rem 0; border-top: 1px solid #2c4a33; }
+.rank-main { display: flex; align-items: center; gap: 0.6rem; }
+.rank-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 0.85rem; margin: 0.3rem 0 0 calc(28px + 0.6rem); font-size: 0.78rem; color: #9db39e; }
+.rank-stats strong { color: #eaf2e6; font-weight: 700; }
 .rank-num { width: 28px; font-weight: 700; color: #9db39e; font-size: 0.9rem; flex-shrink: 0; }
 .rank-num.top { color: #6fbf6f; }
 .row-name { flex: 1; font-weight: 600; color: #eaf2e6; font-size: 0.95rem; }
