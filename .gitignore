@@ -41,3 +41,6 @@ __screenshots__/
 .vercel
 .env
 .env.local
+
+# 일회성 데이터 점검·시드 스크립트
+scripts/
