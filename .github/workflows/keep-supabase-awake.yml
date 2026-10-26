@@ -1,0 +1,24 @@
+# Supabase 무료 플랜은 7일간 요청이 없으면 프로젝트를 자동으로 일시정지한다.
+# 모임이 격주라 그 사이 공백에 멈추는 것을 막으려고 주기적으로 가볍게 조회한다.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '0 3 */2 * *' # 이틀마다 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: https://tczonwknzfattmvccfwt.supabase.co
+          SUPABASE_ANON_KEY: sb_publishable_xxK9vueK3LDL3yfSsmBHvQ_0Kiouuwj
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/members?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "HTTP $code"
+          test "$code" = "200"
