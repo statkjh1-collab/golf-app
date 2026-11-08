@@ -141,7 +141,7 @@ function fmt(d) {
 .notice { background: #1d3324; border: 1px solid #3d6642; border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.88rem; color: #eaf2e6; margin-bottom: 0.9rem; }
 .notice.old { border-color: #6b5d24; background: #2a2612; }
 
-.tools { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.9rem; position: sticky; top: 94px; z-index: 5; background: #0f1b12; padding: 0.5rem 0; }
+.tools { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.9rem; }
 .tools input { width: 100%; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid #2c4a33; background: #16271a; color: #eaf2e6; font: inherit; font-size: 0.95rem; }
 .tool-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .btn-ghost { background: transparent; border: 1px solid #2c4a33; color: #9db39e; border-radius: 8px; padding: 0.4rem 0.8rem; font: inherit; font-size: 0.85rem; cursor: pointer; }
@@ -152,6 +152,7 @@ function fmt(d) {
 .toc a { text-decoration: none; padding: 0.2rem 0; }
 .toc-title { color: #6fbf6f; font-weight: 700; font-size: 0.92rem; }
 .toc-title.lv2 { padding-left: 0.6rem; font-size: 0.88rem; }
+.toc-title.lv3, .toc-title.lv4 { padding-left: 1rem; font-size: 0.84rem; color: #9db39e; }
 .toc-item { color: #d6e3d3; font-size: 0.86rem; padding-left: 1.2rem !important; }
 .toc-item:hover, .toc-title:hover { color: #eaf2e6; }
 .result { margin: 0 0 0.6rem; }

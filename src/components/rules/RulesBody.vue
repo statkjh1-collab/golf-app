@@ -10,6 +10,11 @@ const props = defineProps({
 const root = ref(null)
 const open = ref(new Set())
 
+// "요약" 같은 조항은 처음부터 펼쳐 둔다
+watch(() => props.parsed, p => {
+  open.value = new Set(p.blocks.filter(b => b.kind === 'section' && b.defaultOpen).map(b => b.id))
+}, { immediate: true })
+
 const q = computed(() => props.query.trim().toLowerCase())
 
 // 검색 중이면 맞는 조항만, 그 조항이 속한 묶음 제목과 함께 보여준다
@@ -128,7 +133,7 @@ defineExpose({ goTo, setAll, matchCount })
       <div v-if="b.kind === 'html'" class="md loose" v-html="b.html" />
       <component
         v-else-if="b.kind === 'heading'"
-        :is="b.level === 1 ? 'h2' : 'h3'"
+        :is="['h2', 'h3', 'h4'][Math.min(b.level, 3) - 1]"
         :id="b.id"
         :class="['group-title', `lv${b.level}`]"
         v-html="b.title"
@@ -151,6 +156,8 @@ defineExpose({ goTo, setAll, matchCount })
 .group-title { color: #6fbf6f; margin: 1.75rem 0 0.6rem; scroll-margin-top: 110px; }
 .group-title.lv1 { font-size: 1.25rem; border-bottom: 1px solid #2c4a33; padding-bottom: 0.4rem; }
 .group-title.lv2 { font-size: 1.05rem; }
+.group-title.lv3, .group-title.lv4 { font-size: 0.95rem; color: #9db39e; margin: 1.25rem 0 0.5rem; }
+.loose :deep(blockquote) { color: #9db39e; }
 
 .article { border: 1px solid #2c4a33; border-radius: 10px; background: #16271a; margin-bottom: 0.5rem; }
 .article-head {
