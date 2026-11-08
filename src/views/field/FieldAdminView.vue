@@ -155,7 +155,7 @@ const noShowLimit = computed(() => Number(settings.get('noshow_limit')))
         </div>
         <label>제목<input v-model="form.title" placeholder="예: 12월 필드 정기라운드" @input="touched.title = true" /></label>
         <div class="grid two">
-          <label>구장<input v-model="form.venue" placeholder="예: 아지트CC" /></label>
+          <label>구장<input v-model="form.venue" placeholder="예: ○○CC" /></label>
           <label>구장 주소<input v-model="form.venue_address" placeholder="지도 검색에 쓰여요" /></label>
         </div>
         <label>공지 <span class="hint">저녁 장소, 준비물 등</span>

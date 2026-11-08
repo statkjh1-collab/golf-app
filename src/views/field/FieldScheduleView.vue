@@ -99,7 +99,7 @@ const localRules = computed(() => {
 
 async function share(r) {
   const lines = [
-    `⛳ [아지트 필드] ${r.title}`,
+    `⛳ [아사모 필드] ${r.title}`,
     `📅 ${fmtDate(r.meet_date)}`,
     r.venue ? `📍 ${r.venue}${r.venue_address ? ` (${r.venue_address})` : ''}` : null,
     `🏌️ 첫 티업 ${hm(r.meet_time)} · 집결 ${hm(r.gather_time)} (환복 후 스타트라인)`,

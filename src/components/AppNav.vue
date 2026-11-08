@@ -33,8 +33,8 @@ function switchTo(next) {
   <nav class="nav">
     <div class="nav-top">
       <RouterLink to="/" class="nav-brand">
-        <span class="brand-full">⛳ 아지트 골프모임</span>
-        <span class="brand-short">⛳ 아지트</span>
+        <span class="brand-full">⛳ 아사모 골프동호회</span>
+        <span class="brand-short">⛳ 아사모</span>
       </RouterLink>
       <div class="top-right">
       <div class="toggle" role="tablist" aria-label="모임 구분">

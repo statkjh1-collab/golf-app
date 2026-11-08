@@ -67,7 +67,7 @@ function formatDate(dateStr) {
 
     <section class="hero">
       <div class="hero-icon">⛳</div>
-      <h1>아지트 골프모임</h1>
+      <h1>아사모 골프동호회</h1>
       <p>필드 월 1회 · 스크린 월 2회</p>
       <div class="hero-actions">
         <RouterLink :to="`/${section}/schedule`" class="btn-cta">일정 · 참석 신청</RouterLink>
