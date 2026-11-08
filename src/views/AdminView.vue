@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useGolfStore } from '@/stores/golf'
 import { shareMessage } from '@/lib/kakao'
+import RulesAdmin from '@/components/rules/RulesAdmin.vue'
 
 const store = useGolfStore()
 const tab = ref('members')
@@ -381,7 +382,7 @@ async function shareToKakao() {
 
     <template v-else>
       <div class="tabs">
-        <button v-for="[k, label] in [['members','회원'],['meetings','모임'],['teams','조편성'],['scores','스코어·정산'],['finance','회비'],['logs','접속로그']]"
+        <button v-for="[k, label] in [['members','회원'],['meetings','모임'],['teams','조편성'],['scores','스코어·정산'],['finance','회비'],['rules','회칙'],['logs','접속로그']]"
           :key="k" :class="['tab', { active: tab === k }]" @click="tab = k">{{ label }}</button>
       </div>
 
@@ -710,6 +711,9 @@ async function shareToKakao() {
       </template>
 
       <!-- 접속 로그 -->
+      <!-- 회칙 관리 (공통) -->
+      <RulesAdmin v-if="tab === 'rules'" />
+
       <div v-if="tab === 'logs'" class="card">
         <h2>접속 로그</h2>
         <p class="dim">일정 화면에서 본인 이름을 선택한 기록입니다.</p>

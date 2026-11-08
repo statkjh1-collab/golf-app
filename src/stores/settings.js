@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS = {
   dormant_attendance_rate: 0.3,
   noshow_limit: 2,
   capacity_total: 40,
+  rules_banner_days: 14,
 }
 
 export const useSettingsStore = defineStore('settings', () => {

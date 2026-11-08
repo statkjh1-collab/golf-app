@@ -12,6 +12,8 @@ const router = createRouter({
     // 공통
     { path: '/', component: HomeView },
     { path: '/register', component: () => import('../views/RegisterView.vue') },
+    { path: '/rules', component: () => import('../views/RulesView.vue') },
+    { path: '/rules/v/:id', component: () => import('../views/RulesView.vue') },
 
     // 스크린 (기존 화면 그대로)
     { path: '/screen', redirect: '/screen/schedule' },

@@ -36,6 +36,7 @@ function switchTo(next) {
         <span class="brand-full">⛳ 아지트 골프모임</span>
         <span class="brand-short">⛳ 아지트</span>
       </RouterLink>
+      <div class="top-right">
       <div class="toggle" role="tablist" aria-label="모임 구분">
         <button
           v-for="s in [{ key: 'screen', label: '스크린' }, { key: 'field', label: '필드' }]"
@@ -45,6 +46,8 @@ function switchTo(next) {
           :class="{ on: section === s.key }"
           @click="switchTo(s.key)"
         >{{ s.label }}</button>
+      </div>
+      <RouterLink to="/rules" class="rules-link" title="회칙" aria-label="회칙">📖</RouterLink>
       </div>
     </div>
     <div class="nav-links">
@@ -79,6 +82,20 @@ function switchTo(next) {
   font-size: 1.05rem;
 }
 .brand-short { display: none; }
+
+.top-right { display: flex; align-items: center; gap: 0.5rem; }
+.rules-link {
+  font-size: 1.15rem;
+  text-decoration: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.rules-link:hover { border-color: #2c4a33; }
+.rules-link.router-link-active { border-color: #4e9a51; background: #16271a; }
 
 .toggle {
   display: flex;

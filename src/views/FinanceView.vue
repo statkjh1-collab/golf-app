@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useGolfStore } from '@/stores/golf'
+import RuleLink from '@/components/rules/RuleLink.vue'
 
 const store = useGolfStore()
 onMounted(() => store.fetchTransactions())
@@ -32,6 +33,10 @@ const summaryRows = computed(() => {
 <template>
   <main class="page">
     <h1>회비 현황</h1>
+    <div class="rule-links">
+      <RuleLink anchor="rule-1">세칙 1</RuleLink>
+      <RuleLink anchor="art-18">제18조</RuleLink>
+    </div>
 
     <div class="card balance-card">
       <p class="dim">현재 잔액</p>
@@ -73,7 +78,8 @@ const summaryRows = computed(() => {
 
 <style scoped>
 .page { max-width: 640px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-h1 { font-size: 1.6rem; font-weight: 700; color: #eaf2e6; margin-bottom: 1.25rem; }
+h1 { font-size: 1.6rem; font-weight: 700; color: #eaf2e6; margin-bottom: 0.5rem; }
+.rule-links { display: flex; gap: 0.4rem; margin-bottom: 1.25rem; }
 h2 { font-size: 1rem; font-weight: 600; color: #9db39e; margin: 0 0 1rem; }
 .card { background: #1a2e1f; border: 1px solid #2c4a33; border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; }
 .dim { color: #9db39e; font-size: 0.875rem; margin: 0; }

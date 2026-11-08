@@ -1,13 +1,26 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGolfStore } from '@/stores/golf'
 import { useSettingsStore } from '@/stores/settings'
+import { useRulesStore } from '@/stores/rules'
 import { lastSection } from '@/router'
 
 const store = useGolfStore()
 const settings = useSettingsStore()
+const rules = useRulesStore()
 const section = lastSection()
+
+onMounted(() => { if (!rules.loaded) rules.load() })
+
+// 현재 회칙이 게시된 지 rules_banner_days일 안이면 개정 배너
+const rulesBanner = computed(() => {
+  const cur = rules.current
+  if (!cur?.published_at) return null
+  const days = (Date.now() - new Date(cur.published_at).getTime()) / 86400000
+  if (days > Number(settings.get('rules_banner_days'))) return null
+  return cur.effective_date || cur.published_at.slice(0, 10)
+})
 
 const upcomingField = computed(() => {
   const today = new Date().toISOString().slice(0, 10)
@@ -46,6 +59,10 @@ function formatDate(dateStr) {
 
 <template>
   <main class="home">
+    <RouterLink v-if="rulesBanner" to="/rules" class="rules-banner">
+      📖 회칙 개정 ({{ rulesBanner }}) — 바뀐 내용을 확인해 주세요 →
+    </RouterLink>
+
     <section class="hero">
       <div class="hero-icon">⛳</div>
       <h1>아지트 골프모임</h1>
@@ -53,6 +70,7 @@ function formatDate(dateStr) {
       <div class="hero-actions">
         <RouterLink :to="`/${section}/schedule`" class="btn-cta">일정 · 참석 신청</RouterLink>
         <RouterLink :to="`/${section}/ranking`" class="btn-outline">순위표 보기</RouterLink>
+        <RouterLink to="/rules" class="btn-outline">📖 회칙 보기</RouterLink>
       </div>
     </section>
 
@@ -165,6 +183,8 @@ function formatDate(dateStr) {
 <style scoped>
 .home { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem; }
 
+.rules-banner { display: block; background: #2a2612; border: 1px solid #6b5d24; color: #e8c547; border-radius: 10px; padding: 0.7rem 1rem; font-size: 0.9rem; font-weight: 600; text-decoration: none; margin-bottom: 1.5rem; word-break: keep-all; }
+.rules-banner:hover { border-color: #e8c547; }
 .hero { text-align: center; margin-bottom: 2rem; }
 .hero-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
 .hero h1 { font-size: 1.6rem; font-weight: 800; color: #eaf2e6; margin: 0 0 0.6rem; }
