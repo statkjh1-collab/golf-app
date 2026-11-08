@@ -29,7 +29,7 @@ function reset() {
     <div class="card">
       <div class="icon">⛳</div>
       <h1>회원 등록</h1>
-      <p class="sub">아지트 스크린골프 모임에 오신 걸 환영해요!<br>이름을 입력하면 바로 등록됩니다.</p>
+      <p class="sub">아지트 골프모임에 오신 걸 환영해요!<br>이름을 입력하면 바로 등록됩니다.</p>
 
       <template v-if="!done">
         <input v-model="name" placeholder="이름 (실명)" @keydown.enter="register" />

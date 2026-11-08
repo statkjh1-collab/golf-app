@@ -354,7 +354,7 @@ async function shareToKakao() {
     '',
     ...lines,
     '',
-    '자세히 보기 → agit-golf-app.vercel.app/ranking',
+    '자세히 보기 → agit-golf-app.vercel.app/screen/ranking',
   ].join('\n')
 
   kakaoStatus.value = '공유 중...'

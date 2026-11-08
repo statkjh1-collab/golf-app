@@ -1,9 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGolfStore } from '@/stores/golf'
+import { useSettingsStore } from '@/stores/settings'
+import { lastSection } from '@/router'
 
 const store = useGolfStore()
+const settings = useSettingsStore()
+const section = lastSection()
+
+const upcomingField = computed(() => {
+  const today = new Date().toISOString().slice(0, 10)
+  return store.fieldMeetings
+    .filter(m => m.meet_date >= today && m.status !== 'done' && m.status !== 'canceled')
+    .sort((a, b) => a.meet_date.localeCompare(b.meet_date))
+})
 const teamResults = ref({}) // { meeting_id: { A: [], B: [] } }
 
 async function drawTeams(meetingId) {
@@ -37,25 +48,25 @@ function formatDate(dateStr) {
   <main class="home">
     <section class="hero">
       <div class="hero-icon">⛳</div>
-      <h1>아지트 스크린골프 모임</h1>
-      <p>월 2회 정기 라운드 · 핸디캡 적용 · 순위별 식대 정산</p>
+      <h1>아지트 골프모임</h1>
+      <p>필드 월 1회 · 스크린 월 2회</p>
       <div class="hero-actions">
-        <RouterLink to="/schedule" class="btn-cta">일정 · 참석 신청</RouterLink>
-        <RouterLink to="/ranking" class="btn-outline">순위표 보기</RouterLink>
+        <RouterLink :to="`/${section}/schedule`" class="btn-cta">일정 · 참석 신청</RouterLink>
+        <RouterLink :to="`/${section}/ranking`" class="btn-outline">순위표 보기</RouterLink>
       </div>
     </section>
 
     <section class="stats">
       <div class="stat-card">
         <span class="stat-number">{{ store.members.length }}</span>
-        <span class="stat-label">전체 회원</span>
+        <span class="stat-label">전체 회원 (정원 {{ settings.get('capacity_total') }})</span>
       </div>
       <div class="stat-card">
-        <span class="stat-number">{{ store.upcomingMeetings.length }}</span>
+        <span class="stat-number">{{ store.upcomingMeetings.length + upcomingField.length }}</span>
         <span class="stat-label">예정 모임</span>
       </div>
       <div class="stat-card">
-        <span class="stat-number">{{ store.doneMeetings.length }}</span>
+        <span class="stat-number">{{ store.doneMeetings.length + store.fieldMeetings.filter(m => m.status === 'done').length }}</span>
         <span class="stat-label">완료 모임</span>
       </div>
     </section>
@@ -63,11 +74,24 @@ function formatDate(dateStr) {
     <!-- 다가오는 일정 -->
     <section class="upcoming">
       <h2>다가오는 일정</h2>
-      <div v-if="store.upcomingMeetings.length === 0" class="empty">예정된 모임이 없어요.</div>
+      <div v-if="store.upcomingMeetings.length === 0 && upcomingField.length === 0" class="empty">예정된 모임이 없어요.</div>
+      <!-- 필드 라운드 (2단계에서 상세 화면 연결) -->
+      <div v-for="mt in upcomingField.slice(0, 1)" :key="'f' + mt.id" class="meeting-card">
+        <div class="meeting-header">
+          <div>
+            <div class="meeting-title"><span class="kind field">필드</span>{{ mt.title }}</div>
+            <div class="meeting-meta">{{ formatDate(mt.meet_date) }} · {{ mt.meet_time.slice(0,5) }}</div>
+          </div>
+          <span class="badge">{{ mt.capacity }}명 정원</span>
+        </div>
+        <div class="team-actions">
+          <RouterLink to="/field/schedule" class="btn-link">필드 참석 신청 →</RouterLink>
+        </div>
+      </div>
       <div v-for="mt in store.upcomingMeetings.slice(0, 1)" :key="mt.id" class="meeting-card">
         <div class="meeting-header">
           <div>
-            <div class="meeting-title">{{ mt.title }}</div>
+            <div class="meeting-title"><span class="kind">스크린</span>{{ mt.title }}</div>
             <div class="meeting-meta">{{ formatDate(mt.meet_date) }} · {{ mt.meet_time.slice(0,5) }}</div>
           </div>
           <span class="badge">{{ store.attendCount(mt.id) }}/{{ mt.capacity }}명</span>
@@ -82,7 +106,7 @@ function formatDate(dateStr) {
           <button class="btn-team" @click="drawTeams(mt.id)" :disabled="store.attendCount(mt.id) < 2 || hasTeams(mt.id)">
             🎲 {{ hasTeams(mt.id) ? '방 배정 완료' : '랜덤 방 배정' }}
           </button>
-          <RouterLink to="/schedule" class="btn-link">참석 신청 →</RouterLink>
+          <RouterLink to="/screen/schedule" class="btn-link">참석 신청 →</RouterLink>
         </div>
 
         <!-- 기존 배정 결과 표시 -->
@@ -111,7 +135,7 @@ function formatDate(dateStr) {
     </section>
 
     <section class="rules">
-      <h2>운영 규정</h2>
+      <h2>스크린 운영 규정</h2>
       <div class="rule-grid">
         <div class="rule-card">
           <span class="rule-icon">📅</span>
@@ -164,6 +188,8 @@ function formatDate(dateStr) {
 .meeting-card { background: #16271a; border: 1px solid #2c4a33; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
 .meeting-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
 .meeting-title { font-weight: 700; color: #eaf2e6; font-size: 1rem; }
+.kind { display: inline-block; font-size: 0.72rem; font-weight: 700; color: #6fbf6f; border: 1px solid #3d6642; border-radius: 4px; padding: 0.05rem 0.4rem; margin-right: 0.45rem; vertical-align: 2px; }
+.kind.field { color: #e8c547; border-color: #6b5d24; }
 .meeting-meta { color: #9db39e; font-size: 0.85rem; margin-top: 0.2rem; }
 .badge { background: #2c4a33; color: #eaf2e6; font-size: 0.8rem; padding: 0.25rem 0.65rem; border-radius: 20px; font-weight: 600; white-space: nowrap; }
 

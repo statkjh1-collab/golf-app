@@ -1,10 +1,18 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '@/supabase'
+import { useSettingsStore } from '@/stores/settings'
+
+// type 컬럼이 아직 없거나 비어 있으면 기존 모임 = 스크린
+export const meetingType = m => m?.type || 'screen'
 
 export const useGolfStore = defineStore('golf', () => {
+  const settings = useSettingsStore()
   const members = ref([])
+  // 기존 스크린 화면이 그대로 쓰는 목록: 스크린 모임만 담는다
   const meetings = ref([])
+  // 필드 라운드 (2단계에서 사용)
+  const fieldMeetings = ref([])
   const attendances = ref([])
   const scores = ref([])
   const loading = ref(false)
@@ -16,11 +24,16 @@ export const useGolfStore = defineStore('golf', () => {
       supabase.from('meetings').select('*').order('id'),
       supabase.from('attendances').select('*').order('id'),
       supabase.from('scores').select('*').order('id'),
+      settings.load(),
     ])
+    const allMeetings = mt.data || []
+    const fieldIds = new Set(allMeetings.filter(x => meetingType(x) === 'field').map(x => x.id))
     members.value = m.data || []
-    meetings.value = mt.data || []
-    attendances.value = a.data || []
-    scores.value = s.data || []
+    meetings.value = allMeetings.filter(x => meetingType(x) === 'screen')
+    fieldMeetings.value = allMeetings.filter(x => meetingType(x) === 'field')
+    // 스크린 화면에서 쓰는 참석·스코어에는 필드 기록을 섞지 않는다
+    attendances.value = (a.data || []).filter(x => !fieldIds.has(x.meeting_id))
+    scores.value = (s.data || []).filter(x => !fieldIds.has(x.meeting_id))
     loading.value = false
   }
 
@@ -200,7 +213,7 @@ export const useGolfStore = defineStore('golf', () => {
       if (s.rank == null) return
       if (!map[s.member_id]) map[s.member_id] = { games: 0, points: 0, wins: 0, netSum: 0 }
       map[s.member_id].games++
-      map[s.member_id].points += Math.max(11 - s.rank, 1)
+      map[s.member_id].points += settings.screenPoints(s.rank)
       map[s.member_id].netSum += Number(s.net) || 0
       if (s.rank === 1) map[s.member_id].wins++
     })
@@ -264,7 +277,7 @@ export const useGolfStore = defineStore('golf', () => {
   }
 
   return {
-    members, meetings, attendances, scores, loading,
+    members, meetings, fieldMeetings, attendances, scores, loading,
     init,
     addMember, updateMember, deleteMember,
     addMeeting, updateMeeting, deleteMeeting, updateMeetingFee,
