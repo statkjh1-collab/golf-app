@@ -154,6 +154,44 @@ export const useFieldStore = defineStore('field', () => {
   const setNoShow = (id, on) => patchAttendance(id, { status: on ? 'no_show' : 'applied' })
   const setLate = (id, on) => patchAttendance(id, { late: on })
 
+  // ── 조편성 (attendances.team 칸에 조 번호 '1', '2', … 저장) ──
+  function activeOf(meetingId) {
+    return attendancesOf(meetingId).filter(a => ACTIVE.includes(a.status))
+  }
+
+  // 조 번호 → 사람 목록. 미배정은 '' 키.
+  function groupsOf(meetingId) {
+    const map = {}
+    activeOf(meetingId)
+      .sort((a, b) => (a.applied_at || '').localeCompare(b.applied_at || ''))
+      .forEach(a => { const k = a.team || ''; (map[k] ||= []).push(a) })
+    const numbers = Object.keys(map).filter(Boolean).map(Number).sort((a, b) => a - b)
+    return { groups: numbers.map(n => ({ no: n, people: map[String(n)] })), unassigned: map[''] || [] }
+  }
+
+  function hasGroups(meetingId) {
+    return activeOf(meetingId).some(a => a.team)
+  }
+
+  // 무작위 편성: 4명씩, 조 인원 차이가 1명 넘지 않게 고르게 나눈다
+  async function assignGroups(meetingId) {
+    const people = [...activeOf(meetingId)]
+    for (let i = people.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[people[i], people[j]] = [people[j], people[i]]
+    }
+    const count = Math.max(1, Math.ceil(people.length / 4))
+    const results = await Promise.all(people.map((a, i) => patchAttendance(a.id, { team: String((i % count) + 1) })))
+    return results.find(Boolean) // 오류 메시지가 있으면 첫 번째
+  }
+
+  const setGroup = (attendanceId, no) => patchAttendance(attendanceId, { team: no ? String(no) : null })
+
+  async function clearGroups(meetingId) {
+    const results = await Promise.all(activeOf(meetingId).filter(a => a.team).map(a => patchAttendance(a.id, { team: null })))
+    return results.find(Boolean)
+  }
+
   // 회원별 연간 노쇼 횟수: 노쇼 처리 + 1일 전~당일 취소 (세칙 2-2, 제9조)
   function noShowCounts(year = localToday().slice(0, 4)) {
     const ids = new Set(golf.fieldMeetings.filter(r => r.meet_date.startsWith(String(year))).map(r => r.id))
@@ -173,5 +211,6 @@ export const useFieldStore = defineStore('field', () => {
     deadlinePassed, canApply, cancelTierNow,
     refreshRound, apply, cancel,
     createRound, updateRound, setRoundStatus, deleteRound, setNoShow, setLate, noShowCounts,
+    groupsOf, hasGroups, assignGroups, setGroup, clearGroups,
   }
 })

@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useFieldStore, defaultDeadline, defaultGather, localToday } from '@/stores/field'
 import { useAdminAuth } from '@/lib/adminAuth'
 import RuleLink from '@/components/rules/RuleLink.vue'
+import { shareMessage } from '@/lib/kakao'
 
 const golf = useGolfStore()
 const settings = useSettingsStore()
@@ -111,6 +112,54 @@ async function toggleLate(a) {
 
 const canceledOf = id => field.attendancesOf(id).filter(a => a.status === 'canceled')
 
+// ── 조편성 ──
+const groupOpenId = ref(null)
+const groupBusy = ref(false)
+const groupMsg = ref('')
+
+// 고를 수 있는 조: 지금 있는 조 + 새 조 하나 (최소 신청자 ÷ 4)
+function groupChoices(meetingId) {
+  const { groups } = field.groupsOf(meetingId)
+  const max = Math.max(Math.ceil(field.activeCount(meetingId) / 4), ...groups.map(g => g.no), 0)
+  return Array.from({ length: max + 1 }, (_, i) => i + 1)
+}
+
+async function shuffle(r) {
+  if (field.hasGroups(r.id) && !confirm('지금 조편성을 지우고 다시 섞을까요?')) return
+  groupBusy.value = true; groupMsg.value = ''
+  const err = await field.assignGroups(r.id)
+  groupBusy.value = false
+  groupMsg.value = err ? `편성하지 못했어요: ${err}` : `${field.groupsOf(r.id).groups.length}개 조로 편성했어요.`
+}
+
+async function moveTo(a, no) {
+  const err = await field.setGroup(a.id, no || null)
+  if (err) alert(err)
+}
+
+async function clearAll(r) {
+  if (!confirm('조편성을 모두 지울까요?')) return
+  groupBusy.value = true
+  const err = await field.clearGroups(r.id)
+  groupBusy.value = false
+  groupMsg.value = err ? `지우지 못했어요: ${err}` : '조편성을 지웠어요.'
+}
+
+async function shareGroups(r) {
+  const { groups, unassigned } = field.groupsOf(r.id)
+  const lines = [
+    `⛳ [아사모 필드] ${r.title} 조편성`,
+    `📅 ${r.meet_date.slice(5).replace('-', '/')} · ${r.venue || ''} · 첫 티업 ${r.meet_time?.slice(0, 5)}`,
+    '',
+    ...groups.map(g => `${g.no}조: ${g.people.map(a => nameOf(a.member_id)).join(', ')}`),
+    unassigned.length ? `미배정: ${unassigned.map(a => nameOf(a.member_id)).join(', ')}` : null,
+  ].filter(x => x !== null)
+  try {
+    const how = await shareMessage(lines.join('\n'))
+    groupMsg.value = how === 'copied' ? '조편성 문구를 복사했어요. 단톡방에 붙여넣으세요.' : ''
+  } catch { /* 공유 취소 */ }
+}
+
 // ── 연간 노쇼 (제9조) ──
 const year = localToday().slice(0, 4)
 const noShowRows = computed(() => {
@@ -181,12 +230,46 @@ const noShowLimit = computed(() => Number(settings.get('noshow_limit')))
           </div>
           <div class="round-btns">
             <button class="btn-ghost sm" @click="openId = openId === r.id ? null : r.id">{{ openId === r.id ? '참석자 접기' : '참석자·노쇼' }}</button>
+            <button class="btn-ghost sm" @click="groupOpenId = groupOpenId === r.id ? null : r.id">{{ groupOpenId === r.id ? '조편성 접기' : '조편성' }}</button>
             <button class="btn-ghost sm" @click="edit(r)">수정</button>
             <button v-if="r.status === 'open'" class="btn-ghost sm" @click="setStatus(r, 'closed')">신청 마감</button>
             <button v-if="r.status === 'closed'" class="btn-ghost sm" @click="setStatus(r, 'open')">신청 재개</button>
             <button v-if="r.status !== 'done' && r.status !== 'canceled'" class="btn-ghost sm" @click="setStatus(r, 'done')">완료</button>
             <button v-if="r.status !== 'canceled' && r.status !== 'done'" class="btn-ghost sm" @click="setStatus(r, 'canceled')">라운드 취소</button>
             <button class="btn-ghost sm danger" @click="remove(r)">삭제</button>
+          </div>
+
+          <div v-if="groupOpenId === r.id" class="people">
+            <p class="dim small">스크린 조편성처럼 무작위로 4명씩 나눈 뒤, 아래에서 사람별로 조를 바꿀 수 있어요.</p>
+            <div class="round-btns">
+              <button class="btn sm" :disabled="!field.activeCount(r.id) || groupBusy" @click="shuffle(r)">
+                🎲 {{ field.hasGroups(r.id) ? '다시 섞기' : '랜덤 편성' }}
+              </button>
+              <button v-if="field.hasGroups(r.id)" class="btn-ghost sm" :disabled="groupBusy" @click="shareGroups(r)">📣 조편성 공유</button>
+              <button v-if="field.hasGroups(r.id)" class="btn-ghost sm danger" :disabled="groupBusy" @click="clearAll(r)">편성 지우기</button>
+            </div>
+            <p v-if="groupMsg" class="ok">{{ groupMsg }}</p>
+
+            <div v-if="field.hasGroups(r.id)" class="group-grid">
+              <div v-for="g in field.groupsOf(r.id).groups" :key="g.no" class="group-box">
+                <b>{{ g.no }}조 · {{ g.people.length }}명</b>
+                <div v-for="a in g.people" :key="a.id" class="group-member">{{ nameOf(a.member_id) }}</div>
+              </div>
+              <div v-if="field.groupsOf(r.id).unassigned.length" class="group-box none">
+                <b>미배정 · {{ field.groupsOf(r.id).unassigned.length }}명</b>
+                <div v-for="a in field.groupsOf(r.id).unassigned" :key="a.id" class="group-member">{{ nameOf(a.member_id) }}</div>
+              </div>
+            </div>
+
+            <h3>사람별 조 바꾸기</h3>
+            <p v-if="!field.activeCount(r.id)" class="dim small">신청자가 없어요.</p>
+            <div v-for="a in field.confirmedOf(r.id).filter(x => x.status !== 'no_show')" :key="a.id" class="group-edit-row">
+              <span>{{ nameOf(a.member_id) }}</span>
+              <select :value="a.team || ''" @change="moveTo(a, $event.target.value)" :aria-label="`${nameOf(a.member_id)} 조`">
+                <option value="">미배정</option>
+                <option v-for="n in groupChoices(r.id)" :key="n" :value="String(n)">{{ n }}조</option>
+              </select>
+            </div>
           </div>
 
           <div v-if="openId === r.id" class="people">
@@ -274,6 +357,15 @@ table { width: 100%; border-collapse: collapse; font-size: 0.86rem; margin-top: 
 th, td { text-align: left; padding: 0.35rem 0.3rem; border-bottom: 1px solid #1d3324; color: #d6e3d3; }
 th { color: #9db39e; font-weight: 600; }
 tr.bad td { color: #f0907f; }
+.btn.sm { padding: 0.35rem 0.75rem; font-size: 0.82rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; margin-top: 0.75rem; }
+.group-box { background: #16271a; border: 1px solid #2c4a33; border-radius: 8px; padding: 0.6rem 0.7rem; }
+.group-box b { display: block; color: #6fbf6f; font-size: 0.85rem; margin-bottom: 0.3rem; }
+.group-box.none b { color: #9db39e; }
+.group-member { font-size: 0.85rem; color: #eaf2e6; padding: 0.15rem 0; }
+.group-edit-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid #1d3324; font-size: 0.88rem; color: #eaf2e6; }
+.group-edit-row select { background: #16271a; border: 1px solid #2c4a33; border-radius: 6px; color: #eaf2e6; padding: 0.3rem 0.5rem; font: inherit; font-size: 0.85rem; }
 .cancel-row { display: flex; justify-content: space-between; font-size: 0.86rem; color: #d6e3d3; padding: 0.3rem 0; border-bottom: 1px solid #1d3324; }
 .tier { font-size: 0.78rem; font-weight: 600; }
 .tier.free { color: #6fbf6f; }

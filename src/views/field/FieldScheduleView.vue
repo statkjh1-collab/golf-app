@@ -59,6 +59,11 @@ function statusLabel(r) {
   return { text: '신청 완료', cls: 'ok' }
 }
 
+function myGroup(r) {
+  const a = field.mine(r.id, me.value)
+  return a && ['applied', 'confirmed'].includes(a.status) ? a.team : null
+}
+
 function isActive(r) {
   const a = field.mine(r.id, me.value)
   return !!a && ['applied', 'confirmed', 'waitlist'].includes(a.status)
@@ -166,9 +171,21 @@ async function share(r) {
         <div class="tabs" role="tablist">
           <button role="tab" :aria-selected="tab === 'notice'" :class="{ on: tab === 'notice' }" @click="tab = 'notice'">공지</button>
           <button role="tab" :aria-selected="tab === 'people'" :class="{ on: tab === 'people' }" @click="tab = 'people'">신청자 {{ field.activeCount(r.id) }}</button>
+          <button v-if="field.hasGroups(r.id)" role="tab" :aria-selected="tab === 'groups'" :class="{ on: tab === 'groups' }" @click="tab = 'groups'">조편성</button>
         </div>
 
-        <div v-if="tab === 'notice'" class="notice">
+        <div v-if="tab === 'groups'" class="groups">
+          <p v-if="myGroup(r)" class="my-group">내 조: <b>{{ myGroup(r) }}조</b></p>
+          <div class="group-grid">
+            <div v-for="g in field.groupsOf(r.id).groups" :key="g.no" class="group-box" :class="{ mine: String(g.no) === myGroup(r) }">
+              <b>{{ g.no }}조</b>
+              <div v-for="a in g.people" :key="a.id" :class="{ me: String(a.member_id) === me }">{{ nameOf(a.member_id) }}</div>
+            </div>
+          </div>
+          <p class="dim small">조편성은 운영진이 바꿀 수 있어요. 각 조 조장이 캐디피 각출과 스코어 제출을 맡아요. <RuleLink anchor="rule-2-4">세칙 2-4</RuleLink></p>
+        </div>
+
+        <div v-else-if="tab === 'notice'" class="notice">
           <dl>
             <dt>구장</dt>
             <dd>{{ r.venue || '-' }}
@@ -290,6 +307,13 @@ dd { margin: 0; color: #eaf2e6; line-height: 1.55; }
 .names.wait { color: #e8c547; columns: 1; }
 .names li.me { font-weight: 700; color: #6fbf6f; }
 
+.my-group { font-size: 0.92rem; color: #eaf2e6; margin: 0 0 0.6rem; }
+.my-group b { color: #6fbf6f; }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.6rem; }
+.group-box { background: #1d3324; border: 1px solid #2c4a33; border-radius: 8px; padding: 0.6rem 0.7rem; font-size: 0.88rem; color: #eaf2e6; line-height: 1.6; }
+.group-box b { display: block; color: #6fbf6f; font-size: 0.85rem; }
+.group-box.mine { border-color: #4e9a51; }
+.group-box .me { font-weight: 700; color: #6fbf6f; }
 .past { margin-top: 1.5rem; }
 .past-row { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid #2c4a33; padding: 0.55rem 0; font-size: 0.86rem; color: #d6e3d3; }
 .past-row .dim { margin: 0; }
