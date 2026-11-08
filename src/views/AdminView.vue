@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useGolfStore } from '@/stores/golf'
 import { shareMessage } from '@/lib/kakao'
 import RulesAdmin from '@/components/rules/RulesAdmin.vue'
+import { useAdminAuth } from '@/lib/adminAuth'
 
 const store = useGolfStore()
 const tab = ref('members')
@@ -10,13 +11,12 @@ watch(tab, (val) => {
   if (val === 'logs') store.fetchAccessLogs()
   if (val === 'finance') store.fetchTransactions()
 })
-const ADMIN_PW = 'golf1234'
+const { authed, tryLogin: checkPw } = useAdminAuth()
 const pw = ref('')
-const authed = ref(false)
 const authErr = ref('')
 
 function tryLogin() {
-  if (pw.value === ADMIN_PW) { authed.value = true; authErr.value = '' }
+  if (checkPw(pw.value)) authErr.value = ''
   else authErr.value = '비밀번호가 틀렸어요.'
 }
 

@@ -24,10 +24,10 @@ const router = createRouter({
 
     // 필드 (2단계부터 채움)
     { path: '/field', redirect: '/field/schedule' },
-    { path: '/field/schedule', component: FieldComingSoon, meta: { section: 'field', title: '일정·참석' } },
+    { path: '/field/schedule', component: () => import('../views/field/FieldScheduleView.vue'), meta: { section: 'field' } },
     { path: '/field/ranking', component: FieldComingSoon, meta: { section: 'field', title: '순위표' } },
     { path: '/field/finance', component: FieldComingSoon, meta: { section: 'field', title: '회비' } },
-    { path: '/field/admin', component: FieldComingSoon, meta: { section: 'field', title: '관리자' } },
+    { path: '/field/admin', component: () => import('../views/field/FieldAdminView.vue'), meta: { section: 'field' } },
 
     // 예전 주소(단톡방에 공유된 링크 등)는 스크린으로 연결
     { path: '/schedule', redirect: '/screen/schedule' },

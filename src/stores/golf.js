@@ -11,8 +11,9 @@ export const useGolfStore = defineStore('golf', () => {
   const members = ref([])
   // 기존 스크린 화면이 그대로 쓰는 목록: 스크린 모임만 담는다
   const meetings = ref([])
-  // 필드 라운드 (2단계에서 사용)
+  // 필드 라운드와 그 참석 기록 (src/stores/field.js에서 다룬다)
   const fieldMeetings = ref([])
+  const fieldAttendances = ref([])
   const attendances = ref([])
   const scores = ref([])
   const loading = ref(false)
@@ -33,6 +34,7 @@ export const useGolfStore = defineStore('golf', () => {
     fieldMeetings.value = allMeetings.filter(x => meetingType(x) === 'field')
     // 스크린 화면에서 쓰는 참석·스코어에는 필드 기록을 섞지 않는다
     attendances.value = (a.data || []).filter(x => !fieldIds.has(x.meeting_id))
+    fieldAttendances.value = (a.data || []).filter(x => fieldIds.has(x.meeting_id))
     scores.value = (s.data || []).filter(x => !fieldIds.has(x.meeting_id))
     loading.value = false
   }
@@ -277,7 +279,7 @@ export const useGolfStore = defineStore('golf', () => {
   }
 
   return {
-    members, meetings, fieldMeetings, attendances, scores, loading,
+    members, meetings, fieldMeetings, fieldAttendances, attendances, scores, loading,
     init,
     addMember, updateMember, deleteMember,
     addMeeting, updateMeeting, deleteMeeting, updateMeetingFee,

@@ -4,11 +4,13 @@ import { RouterLink } from 'vue-router'
 import { useGolfStore } from '@/stores/golf'
 import { useSettingsStore } from '@/stores/settings'
 import { useRulesStore } from '@/stores/rules'
+import { useFieldStore } from '@/stores/field'
 import { lastSection } from '@/router'
 
 const store = useGolfStore()
 const settings = useSettingsStore()
 const rules = useRulesStore()
+const field = useFieldStore()
 const section = lastSection()
 
 onMounted(() => { if (!rules.loaded) rules.load() })
@@ -100,7 +102,7 @@ function formatDate(dateStr) {
             <div class="meeting-title"><span class="kind field">필드</span>{{ mt.title }}</div>
             <div class="meeting-meta">{{ formatDate(mt.meet_date) }} · {{ mt.meet_time.slice(0,5) }}</div>
           </div>
-          <span class="badge">{{ mt.capacity }}명 정원</span>
+          <span class="badge">{{ field.activeCount(mt.id) }}/{{ mt.capacity }}명</span>
         </div>
         <div class="team-actions">
           <RouterLink to="/field/schedule" class="btn-link">필드 참석 신청 →</RouterLink>

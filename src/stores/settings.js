@@ -20,6 +20,18 @@ export const DEFAULT_SETTINGS = {
   noshow_limit: 2,
   capacity_total: 40,
   rules_banner_days: 14,
+  cancel_late_days: 1,
+  field_capacity_default: 20,
+  local_rules: [
+    '일파만파: 첫 홀·마지막 홀 적용 금지',
+    '멀리건: 18홀 중 1회만 사용 가능',
+    '벙커: 드롭 금지',
+    '트러블샷: 드롭 금지',
+    '무벌타 드롭: 본인 클럽 중 가장 긴 클럽 길이 이내, 뒤쪽 또는 옆쪽으로만 (앞쪽 금지)',
+    '분실구: 무리한 수색으로 진행을 지연하지 않음',
+    '공 확인: 라운드 시작 전 사용할 공을 동반자와 서로 확인',
+    '컨시드(OK): 구장 OK 라인이 있으면 따르고, 없으면 퍼터 그립을 제외한 길이 이내',
+  ],
 }
 
 export const useSettingsStore = defineStore('settings', () => {
