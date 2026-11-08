@@ -8,7 +8,7 @@ const route = useRoute()
     <div class="icon">🏌️</div>
     <h1>필드 {{ route.meta.title }}</h1>
     <p>필드 정기라운드 기능은 준비 중이에요.</p>
-    <RouterLink to="/screen/schedule" class="btn">스크린 일정 보기</RouterLink>
+    <RouterLink to="/field/schedule" class="btn">필드 일정 보기</RouterLink>
   </main>
 </template>
 
